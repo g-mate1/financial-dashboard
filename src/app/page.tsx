@@ -7,6 +7,7 @@ import { Company, REGION_LABELS, REGION_COLORS, SECTOR_COLORS, median, q1, q3 } 
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell, Legend, ReferenceLine,
+  LineChart, Line,
 } from "recharts";
 
 const TT = { contentStyle: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } };
@@ -334,7 +335,60 @@ export default function Dashboard() {
                   </div>
                 </Card>
 
-                {/* KPI charts */}
+                {/* Historical trend lines */}
+                {(() => {
+                  const trendMetrics: [string, string, string][] = [
+                    ['ebit_margin', 'EBIT Margin Trend', '%'],
+                    ['roe', 'ROE Trend', '%'],
+                    ['net_margin', 'Net Margin Trend', '%'],
+                  ];
+                  const allYears = new Set<number>();
+                  sectorCos.forEach(c => { if (c.kpi_history) Object.keys(c.kpi_history).forEach(y => allYears.add(Number(y))); });
+                  const sortedYears = [...allYears].sort();
+                  if (sortedYears.length < 2) return null;
+
+                  return (
+                    <Card className="p-6 mb-6">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">KPI Trends — Industry Median Over Time</h3>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {trendMetrics.map(([key, label, suffix]) => {
+                          const lineData = sortedYears.map(yr => {
+                            const vals = sectorCos
+                              .filter(c => c.kpi_history?.[yr]?.[key] != null)
+                              .map(c => c.kpi_history![yr][key]);
+                            return { year: yr.toString(), median: vals.length >= 3 ? median(vals) : null, n: vals.length };
+                          }).filter(d => d.median != null);
+                          if (lineData.length < 2) return null;
+                          return (
+                            <div key={key}>
+                              <div className="text-xs text-slate-400 font-medium mb-2">{label}</div>
+                              <ResponsiveContainer width="100%" height={180}>
+                                <LineChart data={lineData}>
+                                  <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}${suffix}`} />
+                                  <Tooltip content={({ payload }) => {
+                                    if (!payload?.length) return null;
+                                    const d = payload[0]?.payload;
+                                    return (
+                                      <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                                        <div className="font-semibold text-slate-700">FY {d.year}</div>
+                                        <div className="text-slate-600">Median: {d.median?.toFixed(1)}{suffix}</div>
+                                        <div className="text-slate-400">n={d.n} companies</div>
+                                      </div>
+                                    );
+                                  }} />
+                                  <Line type="monotone" dataKey="median" stroke={SECTOR_COLORS[selSector] || '#2563eb'} strokeWidth={2.5} dot={{ r: 4, fill: SECTOR_COLORS[selSector] || '#2563eb' }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  );
+                })()}
+
+                {/* KPI bar charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   {indBar(sectorCos, 'ebit_margin', 'EBIT Margin', '%')}
                   {indBar(sectorCos, 'roe', 'ROE', '%')}
@@ -475,6 +529,63 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </Card>
+
+                {/* Historical KPI Trends: Company vs Peers vs Industry */}
+                {(() => {
+                  if (!sel?.kpi_history) return null;
+                  const trendKeys: [string, string, string][] = [
+                    ['ebit_margin', 'EBIT Margin', '%'],
+                    ['roe', 'ROE', '%'],
+                  ];
+                  const allYears = new Set<number>();
+                  [sel, ...industryCos].forEach(c => { if (c.kpi_history) Object.keys(c.kpi_history).forEach(y => allYears.add(Number(y))); });
+                  const yrs = [...allYears].sort();
+                  if (yrs.length < 2) return null;
+
+                  return (
+                    <Card className="p-6 mb-6">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">KPI Trends — Company vs Industry</h3>
+                      <div className="flex gap-4 text-xs text-slate-400 mb-4">
+                        <span><span className="inline-block w-3 h-0.5 bg-blue-600 mr-1 align-middle" /> {sel.name}</span>
+                        <span><span className="inline-block w-3 h-0.5 bg-amber-400 mr-1 align-middle border-b border-dashed border-amber-400" /> {sel.broad_sector} Median</span>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {trendKeys.map(([key, label, suffix]) => {
+                          const lineData = yrs.map(yr => {
+                            const compVal = sel.kpi_history?.[yr]?.[key] ?? null;
+                            const indVals = industryCos.filter(c => c.kpi_history?.[yr]?.[key] != null).map(c => c.kpi_history![yr][key]);
+                            return { year: yr.toString(), company: compVal, industry: indVals.length >= 3 ? median(indVals) : null };
+                          }).filter(d => d.company != null || d.industry != null);
+                          if (lineData.length < 2) return null;
+                          return (
+                            <div key={key}>
+                              <div className="text-xs text-slate-400 font-medium mb-2">{label}</div>
+                              <ResponsiveContainer width="100%" height={200}>
+                                <LineChart data={lineData}>
+                                  <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                  <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}${suffix}`} />
+                                  <Tooltip content={({ payload }) => {
+                                    if (!payload?.length) return null;
+                                    const d = payload[0]?.payload;
+                                    return (
+                                      <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                                        <div className="font-semibold text-slate-700 mb-1">FY {d.year}</div>
+                                        {d.company != null && <div className="text-blue-600">{sel.name}: {d.company.toFixed(1)}{suffix}</div>}
+                                        {d.industry != null && <div className="text-amber-600">{sel.broad_sector}: {d.industry.toFixed(1)}{suffix}</div>}
+                                      </div>
+                                    );
+                                  }} />
+                                  <Line type="monotone" dataKey="company" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4, fill: '#2563eb' }} connectNulls />
+                                  <Line type="monotone" dataKey="industry" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 3, fill: '#f59e0b' }} connectNulls />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  );
+                })()}
 
                 {/* Profitability */}
                 <Card className="p-6 mb-6">

@@ -36,6 +36,7 @@ export interface Company {
   analysts?: number;
   sector?: string;
   broad_sector?: string;
+  kpi_history?: Record<string, Record<string, number>>;
 }
 
 export const SECTOR_COLORS: Record<string, string> = {
