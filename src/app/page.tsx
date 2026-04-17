@@ -124,13 +124,15 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">DACH Equity Analytics</h1>
           <p className="text-sm text-slate-500 mt-1">Descriptive financial analysis across the DACH region</p>
         </div>
-        <div className="flex gap-5 items-center text-xs">
-          {Object.entries(REGION_LABELS).map(([k, v]) => (
-            <span key={k} className="flex items-center gap-1.5 text-slate-500">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: REGION_COLORS[k] }} />{v}
-            </span>
-          ))}
-        </div>
+        {tab === 'overview' && (
+          <div className="flex gap-5 items-center text-xs">
+            {Object.entries(REGION_LABELS).map(([k, v]) => (
+              <span key={k} className="flex items-center gap-1.5 text-slate-500">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: REGION_COLORS[k] }} />{v}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
