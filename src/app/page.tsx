@@ -190,12 +190,12 @@ export default function Dashboard() {
                 <Card key={title} className="p-5">
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{title}</div>
                   <ResponsiveContainer width="100%" height={300}>
-                    <ScatterChart margin={{ bottom: 25, left: 5 }}>
+                    <ScatterChart margin={{ bottom: 35, left: 10, right: 10 }}>
                       <XAxis type="number" dataKey="x" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
                         tickFormatter={v => { const r = Math.pow(10, v); return r >= 1000 ? `${(r / 1000).toFixed(0)}B` : `${r.toFixed(0)}M`; }}
-                        label={{ value: 'Revenue (log scale)', position: 'bottom', fill: '#94a3b8', fontSize: 10, offset: 5 }} />
+                        label={{ value: 'Revenue (log scale)', position: 'bottom', fill: '#94a3b8', fontSize: 10, offset: 15 }} />
                       <YAxis type="number" dataKey="y" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
-                        label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 10 }} />
+                        label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 10, dy: 40 }} />
                       <Tooltip
                         content={({ payload }) => {
                           if (!payload?.length) return null;
@@ -210,7 +210,7 @@ export default function Dashboard() {
                           );
                         }}
                       />
-                      <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} iconSize={8} />
+                      <Legend wrapperStyle={{ fontSize: 10, paddingTop: 16 }} iconSize={8} />
                       {(['vienna', 'germany', 'switzerland'] as const).map(r => (
                         <Scatter key={r} name={REGION_LABELS[r]} data={sData.filter(d => d.region === r)} fill={REGION_COLORS[r]} opacity={0.5}>
                           {sData.filter(d => d.region === r).map((_, i) => <Cell key={i} />)}
