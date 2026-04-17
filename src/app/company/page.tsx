@@ -111,7 +111,7 @@ function CompanyContent() {
       { key: 'ebitda_margin', label: 'Margin', hb: true },
       { key: 'roe', label: 'ROE', hb: true },
       { key: 'fwd_pe', label: 'Valuation', hb: false },
-      { key: 'rev_growth', label: 'Growth', hb: true },
+      { key: 'fwd_rev_growth', label: 'Growth', hb: true },
       { key: 'debt_equity', label: 'Leverage', hb: false },
     ];
     return axes.map(a => {

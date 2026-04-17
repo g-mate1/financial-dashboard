@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell, Legend, ReferenceLine,
   LineChart, Line,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
 
 const TT = { contentStyle: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } };
@@ -64,7 +65,7 @@ function RegionBoxChart({ data, metricKey, label, suffix }: { data: Company[]; m
               );
             }}
           />
-          <ReferenceLine x={chartData.dachMedian} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: `DACH ${chartData.dachMedian.toFixed(1)}`, position: 'top', fill: '#94a3b8', fontSize: 9 }} />
+          <ReferenceLine x={chartData.dachMedian} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: `DACH ${chartData.dachMedian.toFixed(1)}${suffix}`, position: 'top', fill: '#94a3b8', fontSize: 9 }} />
           <Bar dataKey="q1" stackId="box" fill="transparent" />
           <Bar dataKey="medSpread" stackId="box" name="Q1 to Median" radius={[4, 0, 0, 4]}>
             {chartData.regions.map((d, i) => <Cell key={i} fill={d.color + '55'} />)}
@@ -529,6 +530,150 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </Card>
+
+                {/* Competitive Profile: Radar + Insights + Summary Cards */}
+                {(() => {
+                  // Compute peer summary metrics
+                  const peerMetrics: { label: string; key: string; suffix: string; higherBetter: boolean }[] = [
+                    { label: 'EBITDA Margin', key: 'ebitda_margin', suffix: '%', higherBetter: true },
+                    { label: 'EBIT Margin', key: 'ebit_margin', suffix: '%', higherBetter: true },
+                    { label: 'Net Margin', key: 'net_margin', suffix: '%', higherBetter: true },
+                    { label: 'ROE', key: 'roe', suffix: '%', higherBetter: true },
+                    { label: 'Forward P/E', key: 'fwd_pe', suffix: 'x', higherBetter: false },
+                    { label: 'Debt/Equity', key: 'debt_equity', suffix: 'x', higherBetter: false },
+                  ];
+                  const peerSummary = peerMetrics.map(m => {
+                    const cv = (sel as unknown as Record<string, number | undefined>)[m.key];
+                    const pvs = peers.map(p => (p as unknown as Record<string, number | undefined>)[m.key]).filter(v => v != null) as number[];
+                    if (cv == null || !pvs.length) return null;
+                    const med = median(pvs);
+                    const diff = (cv - med) / Math.abs(med) * 100;
+                    const isGood = m.higherBetter ? diff > 5 : diff < -5;
+                    const isBad = m.higherBetter ? diff < -5 : diff > 5;
+                    return { ...m, cv, med, diff, isGood, isBad };
+                  }).filter(Boolean) as { label: string; key: string; suffix: string; higherBetter: boolean; cv: number; med: number; diff: number; isGood: boolean; isBad: boolean }[];
+
+                  // Radar data
+                  const radarAxes = [
+                    { key: 'ebitda_margin', label: 'Margin', hb: true },
+                    { key: 'roe', label: 'ROE', hb: true },
+                    { key: 'fwd_pe', label: 'Valuation', hb: false },
+                    { key: 'fwd_rev_growth', label: 'Growth', hb: true },
+                    { key: 'debt_equity', label: 'Leverage', hb: false },
+                  ];
+                  const radarData = radarAxes.map(a => {
+                    const cv = (sel as unknown as Record<string, number | undefined>)[a.key];
+                    const pvs = peers.map(p => (p as unknown as Record<string, number | undefined>)[a.key]).filter(v => v != null) as number[];
+                    const pm = pvs.length ? median(pvs) : 0;
+                    const mx = Math.max(Math.abs(cv ?? 0), Math.abs(pm), 1);
+                    let cn = cv != null ? (cv / mx) * 50 + 50 : 50;
+                    let pn = (pm / mx) * 50 + 50;
+                    if (!a.hb) { cn = 100 - cn; pn = 100 - pn; }
+                    return { metric: a.label, company: Math.max(0, Math.min(100, cn)), peers: Math.max(0, Math.min(100, pn)) };
+                  });
+
+                  // Key insights
+                  const insights: { text: string; color: string }[] = [];
+                  const margin = peerSummary.find(m => m.key === 'ebitda_margin' || m.key === 'ebit_margin');
+                  const pe = peerSummary.find(m => m.key === 'fwd_pe');
+                  const roe = peerSummary.find(m => m.key === 'roe');
+                  const de = peerSummary.find(m => m.key === 'debt_equity');
+
+                  if (margin) {
+                    if (margin.isGood) insights.push({ text: `Operates at ${margin.cv.toFixed(1)}% ${margin.label}, ${Math.abs(margin.diff).toFixed(0)}% above peer median. Suggests pricing power or cost efficiency.`, color: 'text-emerald-700' });
+                    else if (margin.isBad) insights.push({ text: `${margin.label} of ${margin.cv.toFixed(1)}% trails peers (${margin.med.toFixed(1)}%) by ${Math.abs(margin.diff).toFixed(0)}%.`, color: 'text-red-700' });
+                    else insights.push({ text: `${margin.label} of ${margin.cv.toFixed(1)}% is in line with peer median.`, color: 'text-slate-600' });
+                  }
+                  if (pe) {
+                    if (pe.isBad) insights.push({ text: `Trades at ${pe.cv.toFixed(1)}x P/E — a ${Math.abs(pe.diff).toFixed(0)}% premium to peers. Market may price in higher growth.`, color: 'text-amber-700' });
+                    else if (pe.isGood) insights.push({ text: `Forward P/E of ${pe.cv.toFixed(1)}x is ${Math.abs(pe.diff).toFixed(0)}% below peers (${pe.med.toFixed(1)}x). Potentially undervalued.`, color: 'text-emerald-700' });
+                  }
+                  if (roe) {
+                    if (roe.isGood) insights.push({ text: `ROE of ${roe.cv.toFixed(1)}% exceeds peers (${roe.med.toFixed(1)}%) — superior capital efficiency.`, color: 'text-emerald-700' });
+                    else if (roe.isBad) insights.push({ text: `ROE of ${roe.cv.toFixed(1)}% lags peers (${roe.med.toFixed(1)}%).`, color: 'text-red-700' });
+                  }
+                  if (de) {
+                    if (de.isGood) insights.push({ text: `Conservative balance sheet: D/E ${de.cv.toFixed(2)}x vs peers ${de.med.toFixed(2)}x.`, color: 'text-emerald-700' });
+                    else if (de.isBad) insights.push({ text: `Higher leverage (D/E ${de.cv.toFixed(2)}x) vs peers (${de.med.toFixed(2)}x).`, color: 'text-amber-700' });
+                  }
+                  // Advanced: value-quality
+                  if (margin && pe) {
+                    if (margin.isGood && pe.isGood) insights.push({ text: `High quality at low valuation: above-median margins with below-median P/E. A potential value opportunity.`, color: 'text-blue-700' });
+                    else if (margin.isBad && pe.isBad) insights.push({ text: `Below-median margins with above-median valuation — the market may be pricing in a turnaround.`, color: 'text-amber-700' });
+                  }
+                  // Advanced: margin trend
+                  if (sel.kpi_history) {
+                    const years = Object.keys(sel.kpi_history).sort();
+                    if (years.length >= 2) {
+                      const first = sel.kpi_history[years[0]]?.ebit_margin;
+                      const last = sel.kpi_history[years[years.length-1]]?.ebit_margin;
+                      if (first != null && last != null) {
+                        const change = last - first;
+                        if (Math.abs(change) > 1) {
+                          insights.push({ text: `EBIT margin ${change > 0 ? 'improved' : 'declined'} from ${first.toFixed(1)}% to ${last.toFixed(1)}% over ${years.length} years (${change > 0 ? '+' : ''}${change.toFixed(1)}pp).`, color: change > 0 ? 'text-emerald-700' : 'text-red-700' });
+                        }
+                      }
+                    }
+                  }
+
+                  return (
+                    <Card className="p-6 mb-6">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Competitive Profile</h3>
+                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        {/* Radar */}
+                        <div className="lg:col-span-2">
+                          <ResponsiveContainer width="100%" height={260}>
+                            <RadarChart data={radarData}>
+                              <PolarGrid stroke="#e2e8f0" />
+                              <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 11 }} />
+                              <PolarRadiusAxis tick={false} domain={[0, 100]} />
+                              <Radar name={sel.name} dataKey="company" stroke="#2563eb" fill="#2563eb" fillOpacity={0.15} strokeWidth={2} />
+                              <Radar name="Peer Median" dataKey="peers" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.05} strokeDasharray="4 4" />
+                              <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
+                              <Tooltip content={({ payload, label }) => {
+                                if (!payload?.length) return null;
+                                return (
+                                  <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                                    <div className="font-semibold text-slate-700 mb-1">{label}</div>
+                                    {payload.map((p, i) => (
+                                      <div key={i} style={{ color: p.color }}>{p.name}: {Number(p.value).toFixed(0)}/100</div>
+                                    ))}
+                                    <div className="text-slate-400 mt-1 text-[10px]">Normalized (higher = better)</div>
+                                  </div>
+                                );
+                              }} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        {/* Insights + Summary */}
+                        <div className="lg:col-span-3">
+                          {insights.length > 0 && (
+                            <div className="mb-4">
+                              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Key Insights</div>
+                              <div className="space-y-1.5">
+                                {insights.slice(0, 6).map((ins, i) => (
+                                  <div key={i} className={`text-sm ${ins.color}`}>{ins.text}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {peerSummary.map(m => (
+                              <div key={m.key} className="bg-slate-50 rounded-lg p-2.5">
+                                <div className="text-[10px] text-slate-400 font-semibold uppercase">{m.label}</div>
+                                <div className="text-base font-bold text-slate-900">{m.suffix === 'x' ? m.cv.toFixed(2) : m.cv.toFixed(1)}{m.suffix}</div>
+                                <div className="text-[10px] text-slate-400">Peer: {m.suffix === 'x' ? m.med.toFixed(2) : m.med.toFixed(1)}{m.suffix}</div>
+                                <div className={`text-[10px] font-bold ${m.isGood ? 'text-emerald-600' : m.isBad ? 'text-red-600' : 'text-slate-500'}`}>
+                                  {m.diff > 0 ? '+' : ''}{m.diff.toFixed(0)}%
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })()}
 
                 {/* Historical KPI Trends: Company vs Peers vs Industry */}
                 {(() => {
