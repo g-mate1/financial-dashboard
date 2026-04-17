@@ -264,7 +264,7 @@ export default function Dashboard() {
                   }} />
                   <ReferenceLine x={med} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: `Med ${med.toFixed(1)}${suffix}`, position: 'top', fill: '#94a3b8', fontSize: 9 }} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                    {items.map((c, i) => <Cell key={i} fill={c.id === highlightId ? '#2563eb' : (SECTOR_COLORS[selSector] || '#94a3b8')} opacity={c.id === highlightId ? 1 : 0.5} />)}
+                    {items.map((c, i) => <Cell key={i} fill={SECTOR_COLORS[selSector] || '#94a3b8'} opacity={c.id === highlightId ? 1 : 0.35} stroke={c.id === highlightId ? '#1e293b' : 'none'} strokeWidth={c.id === highlightId ? 2 : 0} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -375,8 +375,8 @@ export default function Dashboard() {
                       </h3>
                       {hlCompany && (
                         <div className="flex gap-4 text-xs text-slate-400 mb-3">
-                          <span><span className="inline-block w-3 h-0.5 bg-blue-600 mr-1 align-middle" /> {hlCompany.name}</span>
-                          <span><span className="inline-block w-3 h-0.5 mr-1 align-middle" style={{ background: SECTOR_COLORS[selSector] || '#94a3b8', opacity: 0.6 }} /> {selSector} Median</span>
+                          <span><span className="inline-block w-3 h-0.5 mr-1 align-middle" style={{ background: SECTOR_COLORS[selSector] || '#475569' }} /> {hlCompany.name}</span>
+                          <span><span className="inline-block w-3 h-0.5 mr-1 align-middle" style={{ background: SECTOR_COLORS[selSector] || '#94a3b8', opacity: 0.4 }} /> {selSector} Median</span>
                         </div>
                       )}
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -402,14 +402,14 @@ export default function Dashboard() {
                                     return (
                                       <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
                                         <div className="font-semibold text-slate-700">FY {d.year}</div>
-                                        {d.company != null && <div className="text-blue-600">{hlCompany?.name}: {d.company.toFixed(1)}{suffix}</div>}
-                                        {d.median != null && <div className="text-slate-600">{selSector} Median: {d.median.toFixed(1)}{suffix}</div>}
+                                        {d.company != null && <div style={{ color: SECTOR_COLORS[selSector] || '#475569' }}>{hlCompany?.name}: {d.company.toFixed(1)}{suffix}</div>}
+                                        {d.median != null && <div className="text-slate-500">{selSector} Median: {d.median.toFixed(1)}{suffix}</div>}
                                         <div className="text-slate-400">n={d.n} companies</div>
                                       </div>
                                     );
                                   }} />
-                                  {hlCompany && <Line type="monotone" dataKey="company" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4, fill: '#2563eb' }} connectNulls />}
-                                  <Line type="monotone" dataKey="median" stroke={SECTOR_COLORS[selSector] || '#94a3b8'} strokeWidth={hlCompany ? 1.5 : 2.5} strokeDasharray={hlCompany ? '5 3' : undefined} dot={{ r: hlCompany ? 2 : 4, fill: SECTOR_COLORS[selSector] || '#94a3b8' }} />
+                                  {hlCompany && <Line type="monotone" dataKey="company" stroke={SECTOR_COLORS[selSector] || '#475569'} strokeWidth={2.5} dot={{ r: 4, fill: SECTOR_COLORS[selSector] || '#475569' }} connectNulls />}
+                                  <Line type="monotone" dataKey="median" stroke={SECTOR_COLORS[selSector] || '#94a3b8'} strokeWidth={hlCompany ? 1.5 : 2.5} strokeDasharray={hlCompany ? '5 3' : undefined} dot={{ r: hlCompany ? 2 : 4, fill: SECTOR_COLORS[selSector] || '#94a3b8' }} opacity={hlCompany ? 0.4 : 1} />
                                 </LineChart>
                               </ResponsiveContainer>
                             </div>
