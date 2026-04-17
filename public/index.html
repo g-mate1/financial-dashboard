@@ -3,397 +3,363 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Peer Comparison Dashboard — DACH Industrials</title>
+  <title>DACH Financial Analytics</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
-    select, input { background: #1e293b; border: 1px solid #475569; color: #e2e8f0; border-radius: 8px; }
-    select:focus, input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96,165,250,0.3); }
-    .highlight { background: #3b82f620; border-left: 3px solid #3b82f6; }
-    .bar-bg { background: #334155; border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-    .tab { cursor: pointer; padding: 8px 16px; border-radius: 8px 8px 0 0; }
-    .tab.active { background: #1e293b; color: #60a5fa; border-bottom: 2px solid #60a5fa; }
-    .tab:not(.active) { color: #64748b; }
-    .metric-good { color: #34d399; } .metric-bad { color: #f87171; } .metric-neutral { color: #e2e8f0; }
-    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #1e293b; } ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    body{font-family:'Inter',system-ui,sans-serif;background:#0f172a;color:#e2e8f0}
+    .card{background:#1e293b;border:1px solid #334155;border-radius:12px}
+    select,input{background:#1e293b;border:1px solid #475569;color:#e2e8f0;border-radius:8px;padding:6px 12px}
+    select:focus,input:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,0.3)}
+    .section-title{font-size:1.1rem;font-weight:700;color:#f1f5f9;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid #334155}
+    .region-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+    .dot-at{background:#f87171}.dot-de{background:#60a5fa}.dot-ch{background:#34d399}
+    .pill{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:0.65rem;font-weight:600}
+    .pill-at{background:#991b1b33;color:#fca5a5}.pill-de{background:#1e3a5f33;color:#93c5fd}.pill-ch{background:#064e3b33;color:#6ee7b7}
+    .pct-bar{height:6px;border-radius:3px;background:#334155;position:relative;overflow:hidden}
+    .pct-fill{height:100%;border-radius:3px;position:absolute;left:0;top:0}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#1e293b}::-webkit-scrollbar-thumb{background:#475569;border-radius:3px}
   </style>
 </head>
 <body class="min-h-screen">
+<div class="max-w-[1500px] mx-auto px-4 py-6">
 
-<div id="app" class="max-w-[1400px] mx-auto px-4 py-6">
   <!-- Header -->
   <div class="flex items-center justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-white">Peer Comparison Dashboard</h1>
-      <p class="text-slate-400 text-sm">DACH Industrial Companies — Firm vs. Industry Benchmarking</p>
+      <h1 class="text-2xl font-bold text-white">DACH Financial Analytics</h1>
+      <p class="text-sm text-slate-400">Descriptive analytics across 468 listed companies | Austria, Germany, Switzerland</p>
     </div>
-    <select id="company-select" class="px-4 py-2 text-sm w-80">
-      <option value="">Select a company...</option>
-    </select>
-  </div>
-
-  <!-- Company Header Card -->
-  <div id="company-header" class="card p-5 mb-6 hidden">
-    <div class="flex items-start justify-between">
-      <div>
-        <h2 id="comp-name" class="text-xl font-bold text-white"></h2>
-        <p id="comp-region" class="text-sm text-slate-400"></p>
-      </div>
-      <div id="comp-kpis" class="flex gap-6 text-right"></div>
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-slate-500"><span class="region-dot dot-at"></span>Austria</span>
+      <span class="text-xs text-slate-500"><span class="region-dot dot-de"></span>Germany</span>
+      <span class="text-xs text-slate-500"><span class="region-dot dot-ch"></span>Switzerland</span>
     </div>
   </div>
 
-  <!-- Tabs -->
-  <div id="tabs" class="flex gap-1 mb-0 hidden">
-    <div class="tab active" data-tab="profitability" onclick="switchTab('profitability')">Profitability</div>
-    <div class="tab" data-tab="valuation" onclick="switchTab('valuation')">Valuation</div>
-    <div class="tab" data-tab="growth" onclick="switchTab('growth')">Growth & Returns</div>
-    <div class="tab" data-tab="leverage" onclick="switchTab('leverage')">Leverage</div>
-    <div class="tab" data-tab="table" onclick="switchTab('table')">Full Comparison</div>
+  <!-- ===== SECTION 1: INDUSTRY OVERVIEW ===== -->
+  <div class="section-title">1. Regional KPI Comparison</div>
+  <p class="text-xs text-slate-400 mb-4">How does each region compare on key financial metrics? Box plots show median (line), IQR (box), and range.</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">EBIT Margin (%) by Region</h4><canvas id="box-ebit"></canvas></div>
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">Net Margin (%) by Region</h4><canvas id="box-net"></canvas></div>
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">ROE (%) by Region</h4><canvas id="box-roe"></canvas></div>
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">Forward P/E (x) by Region</h4><canvas id="box-pe"></canvas></div>
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">Revenue Growth (%) by Region</h4><canvas id="box-growth"></canvas></div>
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">Debt/Equity by Region</h4><canvas id="box-de"></canvas></div>
   </div>
 
-  <!-- Tab Content -->
-  <div id="tab-content" class="card p-6 hidden" style="border-top-left-radius: 0;">
-    <!-- Profitability Tab -->
-    <div id="tab-profitability">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">EBITDA Margin (%)</h3><canvas id="chart-ebitda-margin"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Net Margin (%)</h3><canvas id="chart-net-margin"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">ROE (%)</h3><canvas id="chart-roe"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">ROA (%)</h3><canvas id="chart-roa"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Valuation Tab -->
-    <div id="tab-valuation" class="hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Forward P/E (x)</h3><canvas id="chart-fwd-pe"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Forward EV/EBITDA (x)</h3><canvas id="chart-fwd-ev"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">EPS FY+1 vs FY+2</h3><canvas id="chart-eps"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Valuation vs Profitability</h3><canvas id="chart-val-scatter"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Growth Tab -->
-    <div id="tab-growth" class="hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Revenue Growth (%)</h3><canvas id="chart-rev-growth"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Forward ROE (%)</h3><canvas id="chart-fwd-roe"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Revenue Scale (M)</h3><canvas id="chart-revenue"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Net Income (M)</h3><canvas id="chart-ni"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Leverage Tab -->
-    <div id="tab-leverage" class="hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Debt/Equity Ratio</h3><canvas id="chart-de-ratio"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Equity Ratio (%)</h3><canvas id="chart-eq-ratio"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Net Debt / EBITDA (x)</h3><canvas id="chart-nd-ebitda"></canvas></div>
-        <div><h3 class="text-sm font-semibold text-slate-300 mb-3">Current Ratio</h3><canvas id="chart-current"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Full Table Tab -->
-    <div id="tab-table" class="hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm" id="comparison-table">
-          <thead><tr id="table-header" class="text-left text-slate-400 border-b border-slate-700"></tr></thead>
-          <tbody id="table-rows"></tbody>
-        </table>
-      </div>
-    </div>
+  <!-- ===== SECTION 2: SIZE EFFECTS ===== -->
+  <div class="section-title">2. Does Size Matter?</div>
+  <p class="text-xs text-slate-400 mb-4">Revenue (log scale) vs profitability and valuation. Each dot is a company.</p>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">Revenue vs EBIT Margin</h4><canvas id="scatter-size-margin" height="280"></canvas></div>
+    <div class="card p-4"><h4 class="text-xs text-slate-400 mb-2">Revenue vs Forward P/E</h4><canvas id="scatter-size-pe" height="280"></canvas></div>
   </div>
 
-  <!-- Industry Summary -->
-  <div id="industry-summary" class="card p-6 mt-6 hidden">
-    <h3 class="text-lg font-bold text-white mb-4">Industry Peer Group Summary</h3>
-    <div id="summary-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+  <!-- ===== SECTION 3: COMPANY DEEP-DIVE ===== -->
+  <div class="section-title">3. Company Analysis</div>
+  <p class="text-xs text-slate-400 mb-3">Select a company to see how it ranks against its region and the full DACH universe.</p>
+
+  <div class="flex gap-4 mb-4">
+    <select id="company-select" class="w-96"><option value="">Select a company...</option></select>
+  </div>
+
+  <div id="company-detail" class="hidden">
+    <!-- Company header -->
+    <div class="card p-5 mb-4">
+      <div class="flex justify-between items-start">
+        <div><h2 id="cd-name" class="text-xl font-bold"></h2><p id="cd-sub" class="text-sm text-slate-400"></p></div>
+        <div id="cd-kpis" class="flex gap-5 text-right"></div>
+      </div>
+    </div>
+
+    <!-- Percentile ranks -->
+    <div class="card p-5 mb-4">
+      <h3 class="text-sm font-semibold text-slate-300 mb-4">Percentile Rank vs DACH Universe</h3>
+      <div id="percentile-bars"></div>
+    </div>
+
+    <!-- Peer comparison (if available) -->
+    <div id="peer-section" class="hidden">
+      <div class="card p-5 mb-4">
+        <h3 class="text-sm font-semibold text-slate-300 mb-4">Peer Group Comparison</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div><canvas id="peer-margins" height="220"></canvas></div>
+          <div><canvas id="peer-valuation" height="220"></canvas></div>
+        </div>
+      </div>
+      <div class="card p-5 mb-4">
+        <h3 class="text-sm font-semibold text-slate-300 mb-3">Full Peer Metrics</h3>
+        <div class="overflow-x-auto"><table class="w-full text-sm" id="peer-table"></table></div>
+      </div>
+    </div>
+
+    <!-- Regional comparison -->
+    <div class="card p-5 mb-4">
+      <h3 class="text-sm font-semibold text-slate-300 mb-4">Position in Region</h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div><canvas id="region-chart-1" height="250"></canvas></div>
+        <div><canvas id="region-chart-2" height="250"></canvas></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-let allData = [];
-let activeCharts = {};
-let currentCompany = null;
+let D=[];let charts={};
+const RC={vienna:'#f87171',germany:'#60a5fa',switzerland:'#34d399'};
+const RL={vienna:'Austria',germany:'Germany',switzerland:'Switzerland'};
 
-async function init() {
-  const resp = await fetch('/peers_data.json');
-  const json = await resp.json();
-  allData = json.companies;
-
-  const select = document.getElementById('company-select');
-  allData.sort((a,b) => a.name.localeCompare(b.name));
-  allData.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = `${c.name} (${c.region === 'vienna' ? 'AT' : c.region === 'germany' ? 'DE' : 'CH'}) — ${c.peers.length} peers`;
-    select.appendChild(opt);
-  });
-
-  select.addEventListener('change', () => {
-    const comp = allData.find(c => c.id === select.value);
-    if (comp) loadCompany(comp);
-  });
-
-  // Auto-select first
-  if (allData.length > 0) {
-    select.value = allData[0].id;
-    loadCompany(allData[0]);
-  }
+async function init(){
+  const r=await fetch('/full_data.json');
+  const j=await r.json();
+  D=j.companies;
+  buildSelect();
+  renderBoxPlots();
+  renderSizeScatters();
 }
 
-function loadCompany(comp) {
-  currentCompany = comp;
-
-  // Show all sections
-  ['company-header', 'tabs', 'tab-content', 'industry-summary'].forEach(id =>
-    document.getElementById(id).classList.remove('hidden'));
-
-  // Header
-  document.getElementById('comp-name').textContent = comp.name;
-  document.getElementById('comp-region').textContent = `${comp.region === 'vienna' ? 'Austria' : comp.region === 'germany' ? 'Germany' : 'Switzerland'} | ${comp.peers.length} peer companies`;
-
-  const kpiHtml = [
-    ['Revenue', fmt(comp.revenue)],
-    ['EBITDA Margin', comp.ebitda_margin ? comp.ebitda_margin.toFixed(1)+'%' : '—'],
-    ['Fwd P/E', comp.fwd_pe ? comp.fwd_pe.toFixed(1)+'x' : '—'],
-    ['Fwd ROE', comp.fwd_roe ? comp.fwd_roe.toFixed(1)+'%' : '—'],
-  ].map(([k,v]) => `<div><div class="text-xs text-slate-400">${k}</div><div class="text-lg font-bold text-white">${v}</div></div>`).join('');
-  document.getElementById('comp-kpis').innerHTML = kpiHtml;
-
-  // Render active tab
-  switchTab(document.querySelector('.tab.active').dataset.tab);
-  renderSummary(comp);
-}
-
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  ['profitability','valuation','growth','leverage','table'].forEach(t => {
-    const el = document.getElementById('tab-' + t);
-    if (el) el.classList.toggle('hidden', t !== tab);
+function buildSelect(){
+  const s=document.getElementById('company-select');
+  const sorted=[...D].sort((a,b)=>a.name.localeCompare(b.name));
+  sorted.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id;
+    o.textContent=`${c.name} (${RL[c.region]})${c.has_peers?' [peers]':''}`;
+    s.appendChild(o);
   });
-
-  if (!currentCompany) return;
-
-  // Destroy old charts
-  Object.values(activeCharts).forEach(c => c.destroy());
-  activeCharts = {};
-
-  const comp = currentCompany;
-  const all = [comp, ...comp.peers];
-
-  if (tab === 'profitability') {
-    renderBar('chart-ebitda-margin', all, 'ebitda_margin', '%', comp.id);
-    renderBar('chart-net-margin', all, 'net_margin', '%', comp.id);
-    renderBar('chart-roe', all, 'roe', '%', comp.id);
-    renderBar('chart-roa', all, 'roa', '%', comp.id);
-  } else if (tab === 'valuation') {
-    renderBar('chart-fwd-pe', all, 'fwd_pe', 'x', comp.id);
-    renderBar('chart-fwd-ev', all, 'fwd_ev_ebitda', 'x', comp.id);
-    renderGroupedBar('chart-eps', all, ['fwd_eps1','fwd_eps2'], ['EPS FY+1','EPS FY+2'], comp.id);
-    renderScatter('chart-val-scatter', all, 'fwd_roe', 'fwd_pe', 'ROE (%)', 'P/E (x)', comp.id);
-  } else if (tab === 'growth') {
-    renderBar('chart-rev-growth', all, 'fwd_rev_growth', '%', comp.id);
-    renderBar('chart-fwd-roe', all, 'fwd_roe', '%', comp.id);
-    renderBar('chart-revenue', all, 'revenue', 'M', comp.id);
-    renderBar('chart-ni', all, 'net_income', 'M', comp.id);
-  } else if (tab === 'leverage') {
-    renderBar('chart-de-ratio', all, 'debt_equity', 'x', comp.id);
-    renderBar('chart-eq-ratio', all, 'equity_ratio', '%', comp.id);
-    renderBar('chart-nd-ebitda', all, 'net_debt_ebitda', 'x', comp.id);
-    renderBar('chart-current', all, 'current_ratio', 'x', comp.id);
-  } else if (tab === 'table') {
-    renderFullTable(comp);
-  }
+  s.addEventListener('change',()=>{const c=D.find(x=>x.id===s.value);if(c)showCompany(c)});
 }
 
-function renderBar(canvasId, items, key, suffix, highlightId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const filtered = items.filter(c => c[key] != null);
-  filtered.sort((a,b) => (b[key] || 0) - (a[key] || 0));
-
-  const colors = filtered.map(c => c.id === highlightId ? '#3b82f6' : '#475569');
-  const borderColors = filtered.map(c => c.id === highlightId ? '#60a5fa' : '#64748b');
-
-  activeCharts[canvasId] = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: filtered.map(c => truncate(c.name, 18)),
-      datasets: [{
-        data: filtered.map(c => c[key]),
-        backgroundColor: colors,
-        borderColor: borderColors,
-        borderWidth: 1
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.raw?.toFixed(1)}${suffix}` } }
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', callback: v => v + suffix }, grid: { color: '#334155' } },
-        y: { ticks: { color: ctx => filtered[ctx.index]?.id === highlightId ? '#60a5fa' : '#94a3b8', font: ctx => ({ weight: filtered[ctx.index]?.id === highlightId ? 'bold' : 'normal' }) } }
-      },
-      maintainAspectRatio: false,
-      responsive: true
-    }
-  });
-  canvas.parentElement.style.height = Math.max(200, filtered.length * 35 + 40) + 'px';
+function stats(arr){
+  if(!arr.length)return{q1:0,med:0,q3:0,min:0,max:0};
+  const s=arr.slice().sort((a,b)=>a-b);
+  const q1=s[Math.floor(s.length*0.25)];
+  const med=s[Math.floor(s.length*0.5)];
+  const q3=s[Math.floor(s.length*0.75)];
+  return{q1,med,q3,min:s[0],max:s[s.length-1],mean:s.reduce((a,b)=>a+b,0)/s.length,n:s.length};
 }
 
-function renderGroupedBar(canvasId, items, keys, labels, highlightId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const filtered = items.filter(c => keys.some(k => c[k] != null));
-
-  activeCharts[canvasId] = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: filtered.map(c => truncate(c.name, 15)),
-      datasets: keys.map((k, i) => ({
-        label: labels[i],
-        data: filtered.map(c => c[k] || null),
-        backgroundColor: i === 0 ? filtered.map(c => c.id === highlightId ? '#3b82f6' : '#475569')
-                                  : filtered.map(c => c.id === highlightId ? '#60a5fa88' : '#64748b88'),
-        borderWidth: 0
-      }))
-    },
-    options: {
-      plugins: { legend: { labels: { color: '#94a3b8' } } },
-      scales: {
-        x: { ticks: { color: '#94a3b8', maxRotation: 45 } },
-        y: { ticks: { color: '#64748b' }, grid: { color: '#334155' } }
-      }
-    }
-  });
+function percentile(arr,val){
+  const s=arr.slice().sort((a,b)=>a-b);
+  let count=s.filter(v=>v<=val).length;
+  return Math.round(count/s.length*100);
 }
 
-function renderScatter(canvasId, items, xKey, yKey, xLabel, yLabel, highlightId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const filtered = items.filter(c => c[xKey] != null && c[yKey] != null);
-
-  activeCharts[canvasId] = new Chart(canvas, {
-    type: 'scatter',
-    data: {
-      datasets: [{
-        data: filtered.map(c => ({ x: c[xKey], y: c[yKey], name: c.name, highlight: c.id === highlightId })),
-        backgroundColor: filtered.map(c => c.id === highlightId ? '#3b82f6' : '#64748b88'),
-        borderColor: filtered.map(c => c.id === highlightId ? '#60a5fa' : '#94a3b8'),
-        pointRadius: filtered.map(c => c.id === highlightId ? 8 : 5),
-        pointHoverRadius: 10
-      }]
-    },
-    options: {
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.raw.name}: ${xLabel} ${ctx.raw.x?.toFixed(1)}, ${yLabel} ${ctx.raw.y?.toFixed(1)}` } }
-      },
-      scales: {
-        x: { title: { display: true, text: xLabel, color: '#94a3b8' }, ticks: { color: '#64748b' }, grid: { color: '#334155' } },
-        y: { title: { display: true, text: yLabel, color: '#94a3b8' }, ticks: { color: '#64748b' }, grid: { color: '#334155' } }
-      }
-    }
-  });
-}
-
-function renderFullTable(comp) {
-  const all = [comp, ...comp.peers];
-  const metrics = [
-    ['Revenue (M)', 'revenue', 0], ['EBITDA (M)', 'ebitda', 0], ['Net Income (M)', 'net_income', 0],
-    ['EBITDA Margin %', 'ebitda_margin', 1], ['EBIT Margin %', 'ebit_margin', 1], ['Net Margin %', 'net_margin', 1],
-    ['ROE %', 'roe', 1], ['ROA %', 'roa', 1],
-    ['Debt/Equity', 'debt_equity', 2], ['Equity Ratio %', 'equity_ratio', 1],
-    ['Current Ratio', 'current_ratio', 2], ['Net Debt/EBITDA', 'net_debt_ebitda', 1],
-    ['Fwd EPS1', 'fwd_eps1', 2], ['Fwd EPS2', 'fwd_eps2', 2],
-    ['Fwd P/E', 'fwd_pe', 1], ['Fwd EV/EBITDA', 'fwd_ev_ebitda', 1],
-    ['Fwd Rev Growth %', 'fwd_rev_growth', 1], ['Fwd ROE %', 'fwd_roe', 1],
-    ['Target Price', 'target_price', 1],
+function renderBoxPlots(){
+  const metrics=[
+    ['box-ebit','ebit_margin',-20,40],
+    ['box-net','net_margin',-20,30],
+    ['box-roe','roe',-20,50],
+    ['box-pe','fwd_pe',0,60],
+    ['box-growth','rev_growth',-30,30],
+    ['box-de','debt_equity',0,5]
   ];
-
-  // Header
-  document.getElementById('table-header').innerHTML =
-    `<th class="px-3 py-2">Metric</th>` +
-    all.map(c => `<th class="px-3 py-2 text-right ${c.id === comp.id ? 'text-blue-400 font-bold' : ''}">${truncate(c.name, 14)}</th>`).join('');
-
-  // Rows
-  document.getElementById('table-rows').innerHTML = metrics.map(([label, key, dec]) => {
-    const vals = all.map(c => c[key]);
-    const numVals = vals.filter(v => v != null);
-    const avg = numVals.length ? numVals.reduce((s,v) => s+v, 0) / numVals.length : null;
-
-    return `<tr class="border-b border-slate-800">
-      <td class="px-3 py-2 text-slate-300 font-medium">${label}</td>
-      ${all.map(c => {
-        const v = c[key];
-        const isComp = c.id === comp.id;
-        let cls = isComp ? 'font-bold text-blue-300' : '';
-        if (v != null && avg != null && !isComp) {
-          // Color relative to company
-          const compVal = comp[key];
-          if (compVal != null) {
-            if (['debt_equity','net_debt_ebitda','fwd_pe','fwd_ev_ebitda'].includes(key)) {
-              // Lower is better
-              cls += v < compVal ? ' text-green-400' : v > compVal * 1.2 ? ' text-red-400' : '';
+  metrics.forEach(([id,key,clipMin,clipMax])=>{
+    const canvas=document.getElementById(id);
+    const regions=['vienna','germany','switzerland'];
+    const datasets=[];
+    const labels=[];
+    regions.forEach((r,i)=>{
+      const vals=D.filter(c=>c.region===r&&c[key]!=null).map(c=>c[key]).filter(v=>v>=clipMin&&v<=clipMax);
+      const st=stats(vals);
+      labels.push(`${RL[r]} (n=${st.n})`);
+      // Simulate box plot with floating bar
+      datasets.push({
+        label:'IQR',data:[{x:i,y:[st.q1,st.q3]}],
+        backgroundColor:RC[r]+'44',borderColor:RC[r],borderWidth:1,
+        barPercentage:0.6
+      });
+    });
+    // Use grouped bar to show Q1-Q3 range + median line
+    const regionData=regions.map(r=>{
+      const vals=D.filter(c=>c.region===r&&c[key]!=null).map(c=>c[key]).filter(v=>v>=clipMin&&v<=clipMax);
+      return stats(vals);
+    });
+    charts[id]=new Chart(canvas,{
+      type:'bar',
+      data:{
+        labels:['Austria','Germany','Switzerland'],
+        datasets:[
+          {label:'Q1-Median',data:regionData.map(s=>s.med-s.q1),backgroundColor:regions.map(r=>RC[r]+'66'),borderWidth:0,stack:'box'},
+          {label:'Median-Q3',data:regionData.map(s=>s.q3-s.med),backgroundColor:regions.map(r=>RC[r]+'aa'),borderWidth:0,stack:'box'},
+        ]
+      },
+      options:{
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            label:function(ctx){
+              const s=regionData[ctx.dataIndex];
+              return `Median: ${s.med.toFixed(1)} | Q1: ${s.q1.toFixed(1)} | Q3: ${s.q3.toFixed(1)} | n=${s.n}`;
             }
-          }
+          }}
+        },
+        scales:{
+          x:{stacked:true,ticks:{color:'#94a3b8'}},
+          y:{stacked:true,beginAtZero:true,ticks:{color:'#64748b'},grid:{color:'#334155'},
+            title:{display:false}}
         }
-        return `<td class="px-3 py-2 text-right font-mono ${cls}">${v != null ? v.toFixed(dec) : '—'}</td>`;
-      }).join('')}
-    </tr>`;
-  }).join('');
+      }
+    });
+  });
 }
 
-function renderSummary(comp) {
-  const all = [comp, ...comp.peers];
-  const metrics = [
-    ['EBITDA Margin', 'ebitda_margin', '%'], ['Net Margin', 'net_margin', '%'],
-    ['ROE', 'roe', '%'], ['Fwd P/E', 'fwd_pe', 'x'],
-    ['Fwd EV/EBITDA', 'fwd_ev_ebitda', 'x'], ['Fwd ROE', 'fwd_roe', '%'],
+function renderSizeScatters(){
+  [['scatter-size-margin','ebit_margin','EBIT Margin (%)'],['scatter-size-pe','fwd_pe','Forward P/E (x)']].forEach(([id,yKey,yLabel])=>{
+    const canvas=document.getElementById(id);
+    const filtered=D.filter(c=>c.revenue>0&&c[yKey]!=null);
+    const clipped=filtered.filter(c=>{
+      if(yKey==='fwd_pe')return c[yKey]>0&&c[yKey]<80;
+      if(yKey==='ebit_margin')return c[yKey]>-30&&c[yKey]<50;
+      return true;
+    });
+    charts[id]=new Chart(canvas,{
+      type:'scatter',
+      data:{
+        datasets:['vienna','germany','switzerland'].map(r=>({
+          label:RL[r],
+          data:clipped.filter(c=>c.region===r).map(c=>({x:Math.log10(c.revenue),y:c[yKey],name:c.name,rev:c.revenue})),
+          backgroundColor:RC[r]+'66',borderColor:RC[r],pointRadius:3.5,pointHoverRadius:6
+        }))
+      },
+      options:{
+        plugins:{
+          legend:{labels:{color:'#94a3b8',boxWidth:8}},
+          tooltip:{callbacks:{label:ctx=>`${ctx.raw.name}: Rev ${Math.round(ctx.raw.rev)}M, ${yLabel} ${ctx.raw.y.toFixed(1)}`}}
+        },
+        scales:{
+          x:{title:{display:true,text:'Revenue (log₁₀ M)',color:'#94a3b8'},ticks:{color:'#64748b',callback:v=>{const r=Math.pow(10,v);return r>=1000?(r/1000).toFixed(0)+'B':r.toFixed(0)+'M'}},grid:{color:'#334155'}},
+          y:{title:{display:true,text:yLabel,color:'#94a3b8'},ticks:{color:'#64748b'},grid:{color:'#334155'}}
+        }
+      }
+    });
+  });
+}
+
+function showCompany(comp){
+  document.getElementById('company-detail').classList.remove('hidden');
+  document.getElementById('cd-name').textContent=comp.name;
+  document.getElementById('cd-sub').textContent=`${RL[comp.region]} | Revenue: ${comp.revenue?Math.round(comp.revenue)+'M':'—'}`;
+
+  // KPI cards
+  const kpis=[['EBIT Margin',comp.ebit_margin,'%'],['ROE',comp.roe,'%'],['Fwd P/E',comp.fwd_pe,'x'],['Fwd ROE',comp.fwd_roe,'%'],['Rev Growth',comp.fwd_rev_growth,'%']];
+  document.getElementById('cd-kpis').innerHTML=kpis.map(([l,v,s])=>`<div><div class="text-xs text-slate-400">${l}</div><div class="text-lg font-bold">${v!=null?v.toFixed(1)+s:'—'}</div></div>`).join('');
+
+  // Percentile bars
+  const pMetrics=[
+    ['EBIT Margin','ebit_margin',true],['Net Margin','net_margin',true],['ROE','roe',true],
+    ['Forward P/E','fwd_pe',false],['Forward ROE','fwd_roe',true],['Revenue Growth','fwd_rev_growth',true],
+    ['Debt/Equity','debt_equity',false],['Fwd EV/EBITDA','fwd_ev_ebitda',false]
   ];
-
-  document.getElementById('summary-grid').innerHTML = metrics.map(([label, key, suffix]) => {
-    const vals = all.filter(c => c[key] != null).map(c => c[key]);
-    if (!vals.length) return '';
-    const avg = vals.reduce((s,v) => s+v, 0) / vals.length;
-    const med = median(vals);
-    const compVal = comp[key];
-    const rank = compVal != null ? vals.filter(v => v > compVal).length + 1 : '—';
-    const vs = compVal != null ? ((compVal - med) / Math.abs(med) * 100).toFixed(0) : '—';
-
-    return `<div class="bg-slate-800/50 rounded-lg p-3">
-      <div class="text-xs text-slate-400 mb-1">${label}</div>
-      <div class="text-lg font-bold ${compVal > med ? 'text-green-400' : compVal < med ? 'text-amber-400' : 'text-white'}">${compVal != null ? compVal.toFixed(1)+suffix : '—'}</div>
-      <div class="text-xs text-slate-500 mt-1">
-        Median: ${med.toFixed(1)}${suffix} | Rank: ${rank}/${vals.length}
-      </div>
-      <div class="text-xs ${vs > 0 ? 'text-green-400' : 'text-red-400'}">${vs !== '—' ? (vs > 0 ? '+' : '') + vs + '% vs median' : ''}</div>
+  document.getElementById('percentile-bars').innerHTML=pMetrics.map(([label,key,higherBetter])=>{
+    const val=comp[key];
+    if(val==null)return '';
+    const allVals=D.filter(c=>c[key]!=null).map(c=>c[key]);
+    const regVals=D.filter(c=>c[key]!=null&&c.region===comp.region).map(c=>c[key]);
+    const pAll=percentile(allVals,val);
+    const pReg=percentile(regVals,val);
+    const displayPct=higherBetter?pAll:100-pAll;
+    const color=displayPct>66?'#34d399':displayPct>33?'#fbbf24':'#f87171';
+    return `<div class="flex items-center gap-3 mb-2">
+      <div class="w-32 text-xs text-slate-400">${label}</div>
+      <div class="flex-1 pct-bar"><div class="pct-fill" style="width:${pAll}%;background:${color}"></div></div>
+      <div class="w-16 text-xs font-mono text-right">${val.toFixed(1)}</div>
+      <div class="w-20 text-xs text-slate-500">P${pAll} DACH</div>
+      <div class="w-20 text-xs text-slate-500">P${pReg} ${RL[comp.region].substring(0,2)}</div>
     </div>`;
   }).join('');
+
+  // Destroy old charts
+  ['peer-margins','peer-valuation','region-chart-1','region-chart-2'].forEach(id=>{if(charts[id])charts[id].destroy()});
+
+  // Peer section
+  const ps=document.getElementById('peer-section');
+  if(comp.has_peers&&comp.peers&&comp.peers.length>0){
+    ps.classList.remove('hidden');
+    renderPeerCharts(comp);
+    renderPeerTable(comp);
+  }else{
+    ps.classList.add('hidden');
+  }
+
+  // Regional position charts
+  renderRegionPosition(comp);
 }
 
-function median(arr) {
-  if (!arr.length) return 0;
-  const s = arr.slice().sort((a,b) => a-b);
-  const m = Math.floor(s.length/2);
-  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
+function renderPeerCharts(comp){
+  const all=[{...comp,name:comp.name+' ★'},...comp.peers];
+
+  // Margins
+  const mData=all.filter(c=>c.ebitda_margin!=null);
+  mData.sort((a,b)=>(b.ebitda_margin||0)-(a.ebitda_margin||0));
+  charts['peer-margins']=new Chart(document.getElementById('peer-margins'),{
+    type:'bar',
+    data:{
+      labels:mData.map(c=>c.name.length>20?c.name.substring(0,18)+'...':c.name),
+      datasets:[
+        {label:'EBITDA Margin %',data:mData.map(c=>c.ebitda_margin),backgroundColor:mData.map(c=>c.id===comp.id?'#3b82f6':'#475569')},
+      ]
+    },
+    options:{indexAxis:'y',plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#64748b'},grid:{color:'#334155'}},y:{ticks:{color:ctx=>mData[ctx.index]?.id===comp.id?'#60a5fa':'#94a3b8',font:ctx=>({weight:mData[ctx.index]?.id===comp.id?'bold':'normal'})}}},maintainAspectRatio:false,responsive:true}
+  });
+  document.getElementById('peer-margins').parentElement.style.height=Math.max(200,mData.length*32+50)+'px';
+
+  // Valuation
+  const vData=all.filter(c=>c.fwd_pe!=null&&c.fwd_pe>0&&c.fwd_pe<100);
+  vData.sort((a,b)=>(a.fwd_pe||0)-(b.fwd_pe||0));
+  charts['peer-valuation']=new Chart(document.getElementById('peer-valuation'),{
+    type:'bar',
+    data:{
+      labels:vData.map(c=>c.name.length>20?c.name.substring(0,18)+'...':c.name),
+      datasets:[{label:'Forward P/E',data:vData.map(c=>c.fwd_pe),backgroundColor:vData.map(c=>c.id===comp.id?'#3b82f6':'#475569')}]
+    },
+    options:{indexAxis:'y',plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#64748b'},grid:{color:'#334155'}},y:{ticks:{color:ctx=>vData[ctx.index]?.id===comp.id?'#60a5fa':'#94a3b8',font:ctx=>({weight:vData[ctx.index]?.id===comp.id?'bold':'normal'})}}},maintainAspectRatio:false,responsive:true}
+  });
+  document.getElementById('peer-valuation').parentElement.style.height=Math.max(200,vData.length*32+50)+'px';
 }
 
-function fmt(v) {
-  if (v == null) return '—';
-  if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(0)+'T';
-  if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(1)+'B';
-  return v.toFixed(0)+'M';
+function renderPeerTable(comp){
+  const all=[comp,...comp.peers];
+  const metrics=[['Revenue (M)','revenue',0],['EBITDA Margin','ebitda_margin',1],['Net Margin','net_margin',1],['ROE','roe',1],['D/E','debt_equity',2],['Fwd P/E','fwd_pe',1],['Fwd EV/EBITDA','fwd_ev_ebitda',1],['Fwd ROE','fwd_roe',1]];
+  const t=document.getElementById('peer-table');
+  t.innerHTML=`<thead><tr class="text-left text-slate-400 border-b border-slate-700"><th class="px-3 py-2">Metric</th>${all.map(c=>`<th class="px-3 py-2 text-right ${c.id===comp.id?'text-blue-400 font-bold':''}">${c.name.length>12?c.name.substring(0,11)+'…':c.name}</th>`).join('')}</tr></thead>
+  <tbody>${metrics.map(([label,key,dec])=>`<tr class="border-b border-slate-800"><td class="px-3 py-1.5 text-slate-300">${label}</td>${all.map(c=>`<td class="px-3 py-1.5 text-right font-mono ${c.id===comp.id?'text-blue-300 font-bold':''}">${c[key]!=null?c[key].toFixed(dec):'—'}</td>`).join('')}</tr>`).join('')}</tbody>`;
 }
 
-function truncate(s, n) { return s.length > n ? s.substring(0, n-1) + '...' : s; }
+function renderRegionPosition(comp){
+  const regionComps=D.filter(c=>c.region===comp.region);
+
+  // Chart 1: EBIT margin distribution with company marked
+  const marginVals=regionComps.filter(c=>c.ebit_margin!=null&&c.ebit_margin>-30&&c.ebit_margin<50).map(c=>c.ebit_margin);
+  const buckets=Array(16).fill(0);
+  marginVals.forEach(v=>{const b=Math.min(15,Math.max(0,Math.floor((v+30)/5)));buckets[b]++});
+  const compBucket=comp.ebit_margin!=null?Math.min(15,Math.max(0,Math.floor((comp.ebit_margin+30)/5))):-1;
+  charts['region-chart-1']=new Chart(document.getElementById('region-chart-1'),{
+    type:'bar',
+    data:{
+      labels:buckets.map((_,i)=>`${-30+i*5}%`),
+      datasets:[{data:buckets,backgroundColor:buckets.map((_,i)=>i===compBucket?'#3b82f6':RC[comp.region]+'44'),borderColor:buckets.map((_,i)=>i===compBucket?'#60a5fa':RC[comp.region]),borderWidth:1}]
+    },
+    options:{plugins:{legend:{display:false},title:{display:true,text:`EBIT Margin Distribution — ${RL[comp.region]} (${comp.name} highlighted)`,color:'#94a3b8',font:{size:11}}},scales:{x:{ticks:{color:'#64748b'}},y:{ticks:{color:'#64748b'},grid:{color:'#334155'}}}}
+  });
+
+  // Chart 2: ROE distribution
+  const roeVals=regionComps.filter(c=>c.roe!=null&&c.roe>-30&&c.roe<60).map(c=>c.roe);
+  const rBuckets=Array(18).fill(0);
+  roeVals.forEach(v=>{const b=Math.min(17,Math.max(0,Math.floor((v+30)/5)));rBuckets[b]++});
+  const compRBucket=comp.roe!=null?Math.min(17,Math.max(0,Math.floor((comp.roe+30)/5))):-1;
+  charts['region-chart-2']=new Chart(document.getElementById('region-chart-2'),{
+    type:'bar',
+    data:{
+      labels:rBuckets.map((_,i)=>`${-30+i*5}%`),
+      datasets:[{data:rBuckets,backgroundColor:rBuckets.map((_,i)=>i===compRBucket?'#3b82f6':RC[comp.region]+'44'),borderColor:rBuckets.map((_,i)=>i===compRBucket?'#60a5fa':RC[comp.region]),borderWidth:1}]
+    },
+    options:{plugins:{legend:{display:false},title:{display:true,text:`ROE Distribution — ${RL[comp.region]} (${comp.name} highlighted)`,color:'#94a3b8',font:{size:11}}},scales:{x:{ticks:{color:'#64748b'}},y:{ticks:{color:'#64748b'},grid:{color:'#334155'}}}}
+  });
+}
 
 init();
 </script>
