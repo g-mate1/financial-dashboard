@@ -71,6 +71,7 @@ export interface Peer {
   fwd_rev_growth?: number;
   eps1?: number;
   target_price?: number;
+  kpi_history?: Record<string, Record<string, number>>;
 }
 
 export const REGION_LABELS: Record<string, string> = {
