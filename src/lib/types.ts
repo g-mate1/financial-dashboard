@@ -34,7 +34,22 @@ export interface Company {
   fwd_rev_growth?: number;
   fwd_roe?: number;
   analysts?: number;
+  sector?: string;
+  broad_sector?: string;
 }
+
+export const SECTOR_COLORS: Record<string, string> = {
+  'Technology': '#7c3aed',
+  'Industrials': '#2563eb',
+  'Financials': '#0891b2',
+  'Consumer': '#d97706',
+  'Healthcare': '#059669',
+  'Materials': '#64748b',
+  'Real Estate': '#be185d',
+  'Energy & Utilities': '#15803d',
+  'Transport': '#9333ea',
+  'Other': '#94a3b8',
+};
 
 export interface Peer {
   id: string;

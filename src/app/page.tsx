@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { getCompanies } from "@/lib/data";
-import { Company, REGION_LABELS, REGION_COLORS, median, q1, q3 } from "@/lib/types";
+import { Company, REGION_LABELS, REGION_COLORS, SECTOR_COLORS, median, q1, q3 } from "@/lib/types";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell, Legend, ReferenceLine,
@@ -73,7 +73,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
   const [sortKey, setSortKey] = useState<keyof Company>("name");
-  const [tab, setTab] = useState<'overview' | 'peers'>('overview');
+  const [tab, setTab] = useState<'overview' | 'industries' | 'peers'>('overview');
 
   const filtered = useMemo(() => {
     let d = companies;
@@ -94,11 +94,11 @@ export default function Dashboard() {
 
   const scatterMargin = useMemo(() =>
     companies.filter(c => c.revenue && c.revenue > 0 && c.ebit_margin != null && c.ebit_margin > -30 && c.ebit_margin < 50)
-      .map(c => ({ x: Math.log10(c.revenue!), y: c.ebit_margin!, name: c.name, region: c.region })), [companies]);
+      .map(c => ({ x: Math.log10(c.revenue!), y: c.ebit_margin!, name: c.name, region: c.region, rev: c.revenue! })), [companies]);
 
   const scatterPe = useMemo(() =>
     companies.filter(c => c.revenue && c.revenue > 0 && c.fwd_pe != null && c.fwd_pe > 0 && c.fwd_pe < 80)
-      .map(c => ({ x: Math.log10(c.revenue!), y: c.fwd_pe!, name: c.name, region: c.region })), [companies]);
+      .map(c => ({ x: Math.log10(c.revenue!), y: c.fwd_pe!, name: c.name, region: c.region, rev: c.revenue! })), [companies]);
 
   const peersCompanies = companies.filter(c => c.has_peers);
 
@@ -124,6 +124,10 @@ export default function Dashboard() {
         <button onClick={() => setTab('overview')}
           className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === 'overview' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
           Market Overview
+        </button>
+        <button onClick={() => setTab('industries')}
+          className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === 'industries' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+          Industry Comparison
         </button>
         <button onClick={() => setTab('peers')}
           className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === 'peers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
@@ -175,7 +179,20 @@ export default function Dashboard() {
                         label={{ value: 'Revenue (log scale)', position: 'bottom', fill: '#94a3b8', fontSize: 10, offset: 5 }} />
                       <YAxis type="number" dataKey="y" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
                         label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 10 }} />
-                      <Tooltip {...TT} formatter={(v) => Number(v).toFixed(1)} labelFormatter={() => ''} />
+                      <Tooltip {...TT}
+                        content={({ payload }) => {
+                          if (!payload?.length) return null;
+                          const d = payload[0]?.payload;
+                          if (!d) return null;
+                          return (
+                            <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                              <div className="font-semibold text-slate-800">{d.name}</div>
+                              <div className="text-slate-500">Revenue: {d.rev >= 1000 ? `${(d.rev/1000).toFixed(1)}B` : `${Math.round(d.rev)}M`}</div>
+                              <div className="text-slate-500">{yLabel}: {d.y?.toFixed(1)}</div>
+                            </div>
+                          );
+                        }}
+                      />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       {(['vienna', 'germany', 'switzerland'] as const).map(r => (
                         <Scatter key={r} name={REGION_LABELS[r]} data={sData.filter(d => d.region === r)} fill={REGION_COLORS[r]} opacity={0.5}>
@@ -190,6 +207,104 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      {tab === 'industries' && (() => {
+        const sectors = [...new Set(companies.map(c => c.broad_sector || 'Other'))].sort();
+        const sectorData = sectors.map(s => {
+          const cos = companies.filter(c => (c.broad_sector || 'Other') === s);
+          const ebitVals = cos.filter(c => c.ebit_margin != null).map(c => c.ebit_margin!);
+          const roeVals = cos.filter(c => c.roe != null).map(c => c.roe!);
+          const peVals = cos.filter(c => c.fwd_pe != null && c.fwd_pe > 0 && c.fwd_pe < 100).map(c => c.fwd_pe!);
+          const deVals = cos.filter(c => c.debt_equity != null && c.debt_equity >= 0 && c.debt_equity < 10).map(c => c.debt_equity!);
+          const growthVals = cos.filter(c => c.fwd_rev_growth != null).map(c => c.fwd_rev_growth!);
+          return {
+            sector: s, n: cos.length, color: SECTOR_COLORS[s] || '#94a3b8',
+            ebit_margin: ebitVals.length ? median(ebitVals) : null,
+            roe: roeVals.length ? median(roeVals) : null,
+            fwd_pe: peVals.length ? median(peVals) : null,
+            debt_equity: deVals.length ? median(deVals) : null,
+            rev_growth: growthVals.length ? median(growthVals) : null,
+          };
+        }).filter(s => s.n >= 5);
+
+        const metricCharts: { key: string; label: string; suffix: string }[] = [
+          { key: 'ebit_margin', label: 'Median EBIT Margin', suffix: '%' },
+          { key: 'roe', label: 'Median ROE', suffix: '%' },
+          { key: 'fwd_pe', label: 'Median Forward P/E', suffix: 'x' },
+          { key: 'debt_equity', label: 'Median Debt/Equity', suffix: 'x' },
+          { key: 'rev_growth', label: 'Median Revenue Growth', suffix: '%' },
+        ];
+
+        return (
+          <div className="mb-10">
+            <p className="text-sm text-slate-500 mb-6">Median KPIs by broad industry sector across the DACH universe.</p>
+
+            {/* Industry summary table */}
+            <Card className="p-6 mb-8">
+              <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Industry Overview</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
+                      <th className="px-3 py-2 text-left">Industry</th>
+                      <th className="px-3 py-2 text-right">Companies</th>
+                      <th className="px-3 py-2 text-right">EBIT Margin</th>
+                      <th className="px-3 py-2 text-right">ROE</th>
+                      <th className="px-3 py-2 text-right">Fwd P/E</th>
+                      <th className="px-3 py-2 text-right">D/E</th>
+                      <th className="px-3 py-2 text-right">Rev Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sectorData.sort((a, b) => (b.ebit_margin ?? 0) - (a.ebit_margin ?? 0)).map(s => (
+                      <tr key={s.sector} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-2.5 font-medium text-slate-800">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ background: s.color }} />
+                          {s.sector}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-500">{s.n}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.ebit_margin != null ? `${s.ebit_margin.toFixed(1)}%` : '—'}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.roe != null ? `${s.roe.toFixed(1)}%` : '—'}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.fwd_pe != null ? `${s.fwd_pe.toFixed(1)}x` : '—'}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.debt_equity != null ? `${s.debt_equity.toFixed(2)}x` : '—'}</td>
+                        <td className={`px-3 py-2.5 text-right font-mono ${(s.rev_growth ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {s.rev_growth != null ? `${s.rev_growth > 0 ? '+' : ''}${s.rev_growth.toFixed(1)}%` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Bar charts by metric */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {metricCharts.map(({ key, label, suffix }) => {
+                const chartItems = sectorData
+                  .filter(s => (s as Record<string, unknown>)[key] != null)
+                  .sort((a, b) => ((b as unknown as Record<string, number>)[key] ?? 0) - ((a as unknown as Record<string, number>)[key] ?? 0));
+                if (!chartItems.length) return null;
+                return (
+                  <Card key={key} className="p-5">
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{label}</div>
+                    <ResponsiveContainer width="100%" height={Math.max(160, chartItems.length * 30 + 20)}>
+                      <BarChart data={chartItems} layout="vertical">
+                        <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
+                          tickFormatter={v => `${v}${suffix}`} />
+                        <YAxis type="category" dataKey="sector" tick={{ fill: '#475569', fontSize: 11 }} width={120} axisLine={false} tickLine={false} />
+                        <Tooltip {...TT} formatter={(v) => [`${Number(v).toFixed(1)}${suffix}`, label]} />
+                        <Bar dataKey={key} radius={[0, 4, 4, 0]}>
+                          {chartItems.map((s, i) => <Cell key={i} fill={s.color} opacity={0.8} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === 'peers' && (
         <div className="mb-10">
