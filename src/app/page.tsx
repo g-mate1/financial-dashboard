@@ -122,7 +122,7 @@ export default function Dashboard() {
       <div className="flex items-end justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">DACH Equity Analytics</h1>
-          <p className="text-sm text-slate-500 mt-1">Descriptive financial analysis across 468 listed companies</p>
+          <p className="text-sm text-slate-500 mt-1">Descriptive financial analysis across the DACH region</p>
         </div>
         <div className="flex gap-5 items-center text-xs">
           {Object.entries(REGION_LABELS).map(([k, v]) => (
@@ -299,7 +299,7 @@ export default function Dashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
+                        <tr className="text-[11px] text-slate-500 uppercase tracking-wide border-b border-slate-200">
                           <th className="px-3 py-2 text-left">Industry</th>
                           <th className="px-3 py-2 text-right">N</th>
                           <th className="px-3 py-2 text-right">Med. EBIT %</th>
@@ -344,7 +344,7 @@ export default function Dashboard() {
                         if (!ss) return null;
                         return ([['EBIT %', ss.ebit_margin, '%'], ['ROE', ss.roe, '%'], ['Fwd P/E', ss.fwd_pe, 'x'], ['D/E', ss.debt_equity, 'x']] as [string, number|null, string][]).map(([l,v,s]) => (
                           <div key={l} className="text-right">
-                            <div className="text-[10px] text-slate-400 uppercase font-semibold">Med. {l}</div>
+                            <div className="text-[11px] text-slate-500 uppercase font-semibold">Med. {l}</div>
                             <div className="text-lg font-bold text-slate-900">{v != null ? `${v.toFixed(1)}${s}` : '—'}</div>
                           </div>
                         ));
@@ -432,7 +432,7 @@ export default function Dashboard() {
                   <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200 sticky top-0 bg-white">
+                        <tr className="text-[11px] text-slate-500 uppercase tracking-wide border-b border-slate-200 sticky top-0 bg-white">
                           <th className="px-3 py-2 text-left">Company</th>
                           <th className="px-3 py-2 text-center">Region</th>
                           <th className="px-3 py-2 text-right">Revenue</th>
@@ -538,7 +538,7 @@ export default function Dashboard() {
             {!sel ? (
               <Card className="p-12 text-center text-slate-400">
                 <p className="text-lg mb-2">Select a company to see its peer group analysis</p>
-                <p className="text-sm">25 industrial companies available with full peer benchmarking data</p>
+                <p className="text-sm">{peersCompanies.length} companies available with full peer benchmarking data</p>
               </Card>
             ) : (
               <>
@@ -552,7 +552,7 @@ export default function Dashboard() {
                     <div className="flex gap-6">
                       {([['EBIT %', sel.ebit_margin, '%'], ['ROE', sel.roe, '%'], ['Fwd P/E', sel.fwd_pe, 'x'], ['Growth', sel.fwd_rev_growth, '%']] as [string, number|undefined, string][]).map(([l,v,s]) => (
                         <div key={l} className="text-right">
-                          <div className="text-[10px] text-slate-400 uppercase font-semibold">{l}</div>
+                          <div className="text-[11px] text-slate-500 uppercase font-semibold">{l}</div>
                           <div className="text-lg font-bold text-slate-900">{v != null ? `${v.toFixed(1)}${s}` : '—'}</div>
                         </div>
                       ))}
@@ -689,7 +689,7 @@ export default function Dashboard() {
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {peerSummary.map(m => (
                               <div key={m.key} className="bg-slate-50 rounded-lg p-2.5">
-                                <div className="text-[10px] text-slate-400 font-semibold uppercase">{m.label}</div>
+                                <div className="text-[11px] text-slate-500 font-semibold uppercase">{m.label}</div>
                                 <div className="text-base font-bold text-slate-900">{m.suffix === 'x' ? m.cv.toFixed(2) : m.cv.toFixed(1)}{m.suffix}</div>
                                 <div className="text-[10px] text-slate-400">Peer: {m.suffix === 'x' ? m.med.toFixed(2) : m.med.toFixed(1)}{m.suffix}</div>
                                 <div className={`text-[10px] font-bold ${m.isGood ? 'text-emerald-600' : m.isBad ? 'text-red-600' : 'text-slate-500'}`}>
@@ -804,7 +804,7 @@ export default function Dashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
+                        <tr className="text-[11px] text-slate-500 uppercase tracking-wide border-b border-slate-200">
                           <th className="px-3 py-2 text-left">Company</th>
                           <th className="px-3 py-2 text-left">Type</th>
                           <th className="px-3 py-2 text-right">Revenue</th>
@@ -889,7 +889,7 @@ export default function Dashboard() {
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200 sticky top-0 bg-white z-10">
+                <tr className="text-left text-[11px] text-slate-500 uppercase tracking-wide border-b border-slate-200 sticky top-0 bg-white z-10">
                   <th className="px-4 py-3">Company</th>
                   <th className="px-3 py-3 text-center">Region</th>
                   <th className="px-3 py-3 text-right">Revenue</th>
@@ -930,7 +930,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="text-center text-xs text-slate-400 py-6">DACH Equity Analytics | Data as of April 2026 | 468 companies</div>
+      <div className="text-center text-xs text-slate-400 py-6">DACH Equity Analytics | Data as of April 2026</div>
     </div>
   );
 }

@@ -170,7 +170,7 @@ function CompanyContent() {
           <div className="flex gap-8">
             {([['EBIT %', company.ebit_margin, '%'], ['ROE', company.roe, '%'], ['Fwd P/E', company.fwd_pe, 'x'], ['Growth', company.fwd_rev_growth, '%']] as [string, number | undefined, string][]).map(([l, v, s]) => (
               <div key={l} className="text-right">
-                <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">{l}</div>
+                <div className="text-[11px] text-slate-500 uppercase tracking-wide font-semibold">{l}</div>
                 <div className="text-xl font-bold text-slate-900">{v != null ? `${v.toFixed(1)}${s}` : '—'}</div>
               </div>
             ))}
@@ -232,7 +232,7 @@ function CompanyContent() {
               <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-3 content-start">
                 {peerSummary.map(m => (
                   <div key={m.key} className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-[10px] text-slate-400 font-semibold uppercase">{m.label}</div>
+                    <div className="text-[11px] text-slate-500 font-semibold uppercase">{m.label}</div>
                     <div className="text-lg font-bold text-slate-900">{m.suffix === 'x' ? m.compVal.toFixed(2) : m.compVal.toFixed(1)}{m.suffix}</div>
                     <div className="text-xs text-slate-400">Peer med: {m.suffix === 'x' ? m.med.toFixed(2) : m.med.toFixed(1)}{m.suffix}</div>
                     <div className={`text-xs font-bold ${m.isGood ? 'text-emerald-600' : m.isBad ? 'text-red-600' : 'text-slate-500'}`}>
@@ -272,7 +272,7 @@ function CompanyContent() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
+                  <tr className="text-[11px] text-slate-500 uppercase tracking-wide border-b border-slate-200">
                     <th className="px-3 py-2 text-left">Company</th>
                     <th className="px-3 py-2 text-right">Revenue</th>
                     <th className="px-3 py-2 text-right">EBITDA %</th>
