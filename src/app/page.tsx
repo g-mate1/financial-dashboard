@@ -46,13 +46,22 @@ function RegionBoxChart({ data, metricKey, label, suffix }: { data: Company[]; m
         <BarChart data={chartData.regions} layout="vertical">
           <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={v => `${v}${suffix}`} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="region" tick={{ fill: '#475569', fontSize: 11, fontWeight: 500 }} width={85} axisLine={false} tickLine={false} />
-          <Tooltip {...TT}
-            formatter={(v, name, props) => {
-              const d = chartData.regions[props?.payload ? chartData.regions.findIndex(r => r.region === props.payload.region) : 0];
-              if (!d) return [Number(v).toFixed(1), name];
-              return [`Q1: ${d.q1.toFixed(1)} | Med: ${(d.q1 + d.medSpread).toFixed(1)} | Q3: ${(d.q1 + d.medSpread + d.q3Spread).toFixed(1)}`, `${d.region} (n=${d.n})`];
+          <Tooltip
+            content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0]?.payload;
+              if (!d) return null;
+              const med = (d.q1 + d.medSpread).toFixed(1);
+              const q3v = (d.q1 + d.medSpread + d.q3Spread).toFixed(1);
+              return (
+                <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                  <div className="font-semibold text-slate-800 mb-1">{d.region} (n={d.n})</div>
+                  <div className="text-slate-500">Q1: {d.q1.toFixed(1)}{suffix}</div>
+                  <div className="text-slate-700 font-medium">Median: {med}{suffix}</div>
+                  <div className="text-slate-500">Q3: {q3v}{suffix}</div>
+                </div>
+              );
             }}
-            labelFormatter={() => ''}
           />
           <ReferenceLine x={chartData.dachMedian} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: `DACH ${chartData.dachMedian.toFixed(1)}`, position: 'top', fill: '#94a3b8', fontSize: 9 }} />
           <Bar dataKey="q1" stackId="box" fill="transparent" />
@@ -74,6 +83,8 @@ export default function Dashboard() {
   const [regionFilter, setRegionFilter] = useState("all");
   const [sortKey, setSortKey] = useState<keyof Company>("name");
   const [tab, setTab] = useState<'overview' | 'industries' | 'peers'>('overview');
+  const [selectedPeer, setSelectedPeer] = useState("");
+  const [selectedIndustry, setSelectedIndustry] = useState("");
 
   const filtered = useMemo(() => {
     let d = companies;
@@ -209,133 +220,346 @@ export default function Dashboard() {
       )}
 
       {tab === 'industries' && (() => {
-        const sectors = [...new Set(companies.map(c => c.broad_sector || 'Other'))].sort();
-        const sectorData = sectors.map(s => {
-          const cos = companies.filter(c => (c.broad_sector || 'Other') === s);
-          const ebitVals = cos.filter(c => c.ebit_margin != null).map(c => c.ebit_margin!);
-          const roeVals = cos.filter(c => c.roe != null).map(c => c.roe!);
-          const peVals = cos.filter(c => c.fwd_pe != null && c.fwd_pe > 0 && c.fwd_pe < 100).map(c => c.fwd_pe!);
-          const deVals = cos.filter(c => c.debt_equity != null && c.debt_equity >= 0 && c.debt_equity < 10).map(c => c.debt_equity!);
-          const growthVals = cos.filter(c => c.fwd_rev_growth != null).map(c => c.fwd_rev_growth!);
+        const sectors = [...new Set(companies.map(c => c.broad_sector || 'Other'))].filter(s => companies.filter(c => c.broad_sector === s).length >= 5).sort();
+        const selSector = selectedIndustry || '';
+        const sectorCos = selSector ? companies.filter(c => c.broad_sector === selSector) : [];
+
+        const sectorSummary = sectors.map(s => {
+          const cos = companies.filter(c => c.broad_sector === s);
           return {
             sector: s, n: cos.length, color: SECTOR_COLORS[s] || '#94a3b8',
-            ebit_margin: ebitVals.length ? median(ebitVals) : null,
-            roe: roeVals.length ? median(roeVals) : null,
-            fwd_pe: peVals.length ? median(peVals) : null,
-            debt_equity: deVals.length ? median(deVals) : null,
-            rev_growth: growthVals.length ? median(growthVals) : null,
+            ebit_margin: median(cos.filter(c => c.ebit_margin != null).map(c => c.ebit_margin!)),
+            roe: median(cos.filter(c => c.roe != null).map(c => c.roe!)),
+            fwd_pe: median(cos.filter(c => c.fwd_pe != null && c.fwd_pe > 0 && c.fwd_pe < 100).map(c => c.fwd_pe!)),
+            debt_equity: median(cos.filter(c => c.debt_equity != null && c.debt_equity < 10).map(c => c.debt_equity!)),
           };
-        }).filter(s => s.n >= 5);
+        });
 
-        const metricCharts: { key: string; label: string; suffix: string }[] = [
-          { key: 'ebit_margin', label: 'Median EBIT Margin', suffix: '%' },
-          { key: 'roe', label: 'Median ROE', suffix: '%' },
-          { key: 'fwd_pe', label: 'Median Forward P/E', suffix: 'x' },
-          { key: 'debt_equity', label: 'Median Debt/Equity', suffix: 'x' },
-          { key: 'rev_growth', label: 'Median Revenue Growth', suffix: '%' },
-        ];
+        const indBar = (cos: Company[], key: keyof Company, label: string, suffix: string, top = 15) => {
+          const items = cos.filter(c => c[key] != null).sort((a, b) => (b[key] as number) - (a[key] as number)).slice(0, top);
+          if (items.length < 2) return null;
+          const med = median(items.map(c => c[key] as number));
+          return (
+            <Card className="p-5">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{label} — Top {Math.min(top, items.length)}</div>
+              <ResponsiveContainer width="100%" height={Math.max(140, items.length * 26 + 20)}>
+                <BarChart data={items.map(c => ({ name: c.name, value: c[key] as number }))} layout="vertical">
+                  <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
+                    tickFormatter={v => suffix === 'M' ? (v >= 1000 ? `${(v/1000).toFixed(0)}B` : `${v.toFixed(0)}M`) : `${v}${suffix}`} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#475569' }} width={130} axisLine={false} tickLine={false}
+                    tickFormatter={(v: string) => v.length > 20 ? v.substring(0, 18) + '…' : v} />
+                  <Tooltip {...TT} formatter={(v) => {
+                    const n = Number(v);
+                    return [suffix === 'M' ? (n >= 1000 ? `${(n/1000).toFixed(1)}B` : `${n.toFixed(0)}M`) : `${n.toFixed(1)}${suffix}`, label];
+                  }} />
+                  <ReferenceLine x={med} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: `Med ${med.toFixed(1)}`, position: 'top', fill: '#94a3b8', fontSize: 9 }} />
+                  <Bar dataKey="value" radius={[0, 3, 3, 0]} fill={SECTOR_COLORS[selSector] || '#94a3b8'} opacity={0.7} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          );
+        };
 
         return (
           <div className="mb-10">
-            <p className="text-sm text-slate-500 mb-6">Median KPIs by broad industry sector across the DACH universe.</p>
-
-            {/* Industry summary table */}
-            <Card className="p-6 mb-8">
-              <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Industry Overview</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
-                      <th className="px-3 py-2 text-left">Industry</th>
-                      <th className="px-3 py-2 text-right">Companies</th>
-                      <th className="px-3 py-2 text-right">EBIT Margin</th>
-                      <th className="px-3 py-2 text-right">ROE</th>
-                      <th className="px-3 py-2 text-right">Fwd P/E</th>
-                      <th className="px-3 py-2 text-right">D/E</th>
-                      <th className="px-3 py-2 text-right">Rev Growth</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sectorData.sort((a, b) => (b.ebit_margin ?? 0) - (a.ebit_margin ?? 0)).map(s => (
-                      <tr key={s.sector} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="px-3 py-2.5 font-medium text-slate-800">
-                          <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ background: s.color }} />
-                          {s.sector}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-500">{s.n}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.ebit_margin != null ? `${s.ebit_margin.toFixed(1)}%` : '—'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.roe != null ? `${s.roe.toFixed(1)}%` : '—'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.fwd_pe != null ? `${s.fwd_pe.toFixed(1)}x` : '—'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.debt_equity != null ? `${s.debt_equity.toFixed(2)}x` : '—'}</td>
-                        <td className={`px-3 py-2.5 text-right font-mono ${(s.rev_growth ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                          {s.rev_growth != null ? `${s.rev_growth > 0 ? '+' : ''}${s.rev_growth.toFixed(1)}%` : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-
-            {/* Bar charts by metric */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {metricCharts.map(({ key, label, suffix }) => {
-                const chartItems = sectorData
-                  .filter(s => (s as Record<string, unknown>)[key] != null)
-                  .sort((a, b) => ((b as unknown as Record<string, number>)[key] ?? 0) - ((a as unknown as Record<string, number>)[key] ?? 0));
-                if (!chartItems.length) return null;
-                return (
-                  <Card key={key} className="p-5">
-                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{label}</div>
-                    <ResponsiveContainer width="100%" height={Math.max(160, chartItems.length * 30 + 20)}>
-                      <BarChart data={chartItems} layout="vertical">
-                        <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
-                          tickFormatter={v => `${v}${suffix}`} />
-                        <YAxis type="category" dataKey="sector" tick={{ fill: '#475569', fontSize: 11 }} width={120} axisLine={false} tickLine={false} />
-                        <Tooltip {...TT} formatter={(v) => [`${Number(v).toFixed(1)}${suffix}`, label]} />
-                        <Bar dataKey={key} radius={[0, 4, 4, 0]}>
-                          {chartItems.map((s, i) => <Cell key={i} fill={s.color} opacity={0.8} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Card>
-                );
-              })}
+            <div className="flex items-center gap-4 mb-6">
+              <select value={selSector} onChange={e => setSelectedIndustry(e.target.value)}
+                className="bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm w-80 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+                <option value="">Select an industry...</option>
+                {sectors.map(s => (
+                  <option key={s} value={s}>{s} ({companies.filter(c => c.broad_sector === s).length} companies)</option>
+                ))}
+              </select>
             </div>
+
+            {!selSector ? (
+              <>
+                {/* Overview table when no industry selected */}
+                <Card className="p-6 mb-8">
+                  <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Industry Overview — All Sectors</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
+                          <th className="px-3 py-2 text-left">Industry</th>
+                          <th className="px-3 py-2 text-right">N</th>
+                          <th className="px-3 py-2 text-right">Med. EBIT %</th>
+                          <th className="px-3 py-2 text-right">Med. ROE</th>
+                          <th className="px-3 py-2 text-right">Med. P/E</th>
+                          <th className="px-3 py-2 text-right">Med. D/E</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sectorSummary.sort((a, b) => (b.ebit_margin ?? 0) - (a.ebit_margin ?? 0)).map(s => (
+                          <tr key={s.sector} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedIndustry(s.sector)}>
+                            <td className="px-3 py-2.5 font-medium text-slate-800">
+                              <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ background: s.color }} />{s.sector}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-slate-500">{s.n}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.ebit_margin ? `${s.ebit_margin.toFixed(1)}%` : '—'}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.roe ? `${s.roe.toFixed(1)}%` : '—'}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.fwd_pe ? `${s.fwd_pe.toFixed(1)}x` : '—'}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-slate-600">{s.debt_equity ? `${s.debt_equity.toFixed(2)}x` : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            ) : (
+              <>
+                {/* Industry header */}
+                <Card className="p-5 mb-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">
+                        <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ background: SECTOR_COLORS[selSector] || '#94a3b8' }} />
+                        {selSector}
+                      </h2>
+                      <p className="text-sm text-slate-500">{sectorCos.length} companies in DACH universe</p>
+                    </div>
+                    <div className="flex gap-6">
+                      {(() => {
+                        const ss = sectorSummary.find(s => s.sector === selSector);
+                        if (!ss) return null;
+                        return ([['EBIT %', ss.ebit_margin, '%'], ['ROE', ss.roe, '%'], ['Fwd P/E', ss.fwd_pe, 'x'], ['D/E', ss.debt_equity, 'x']] as [string, number|null, string][]).map(([l,v,s]) => (
+                          <div key={l} className="text-right">
+                            <div className="text-[10px] text-slate-400 uppercase font-semibold">Med. {l}</div>
+                            <div className="text-lg font-bold text-slate-900">{v != null ? `${v.toFixed(1)}${s}` : '—'}</div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                </Card>
+
+                {/* KPI charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  {indBar(sectorCos, 'ebit_margin', 'EBIT Margin', '%')}
+                  {indBar(sectorCos, 'roe', 'ROE', '%')}
+                  {indBar(sectorCos, 'fwd_pe', 'Forward P/E', 'x')}
+                  {indBar(sectorCos, 'revenue', 'Revenue', 'M')}
+                </div>
+
+                {/* Company table */}
+                <Card className="p-6">
+                  <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">{selSector} Companies</h3>
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200 sticky top-0 bg-white">
+                          <th className="px-3 py-2 text-left">Company</th>
+                          <th className="px-3 py-2 text-center">Region</th>
+                          <th className="px-3 py-2 text-right">Revenue</th>
+                          <th className="px-3 py-2 text-right">EBIT %</th>
+                          <th className="px-3 py-2 text-right">ROE</th>
+                          <th className="px-3 py-2 text-right">Fwd P/E</th>
+                          <th className="px-3 py-2 text-right">D/E</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sectorCos.sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)).map(c => (
+                          <tr key={c.id} className="border-b border-slate-100 hover:bg-blue-50/50 cursor-pointer">
+                            <td className="px-3 py-2">
+                              <Link href={`/company?id=${c.id}`} className="text-slate-800 hover:text-blue-600 font-medium">{c.name}</Link>
+                              {c.has_peers && <span className="text-[10px] text-blue-500 font-medium ml-1">PEERS</span>}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: REGION_COLORS[c.region] + '15', color: REGION_COLORS[c.region] }}>
+                                {REGION_LABELS[c.region].substring(0, 2).toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{c.revenue ? Math.round(c.revenue).toLocaleString() : '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{c.ebit_margin?.toFixed(1) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{c.roe?.toFixed(1) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{c.fwd_pe?.toFixed(1) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{c.debt_equity?.toFixed(2) ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
           </div>
         );
       })()}
 
-      {tab === 'peers' && (
-        <div className="mb-10">
-          <p className="text-sm text-slate-500 mb-6">25 industrial companies with full peer group data. Click any company for detailed benchmarking analysis.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {peersCompanies.map(c => (
-              <Link key={c.id} href={`/company?id=${c.id}`}>
-                <Card className="p-5 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
-                  <div className="flex justify-between items-start mb-3">
+      {tab === 'peers' && (() => {
+        const sel = peersCompanies.find(c => c.id === selectedPeer);
+        const peers = sel?.peers || [];
+        const industryCos = sel ? companies.filter(c => c.broad_sector === sel.broad_sector && c.id !== sel.id) : [];
+        const industryMetrics = (key: string) => {
+          const vals = industryCos.map(c => (c as unknown as Record<string, number | undefined>)[key]).filter(v => v != null) as number[];
+          return vals.length ? median(vals) : null;
+        };
+
+        const peerBar = (metricKey: string, label: string, suffix: string, lowerBetter = false) => {
+          if (!sel) return null;
+          const items = [
+            { name: sel.name, value: (sel as unknown as Record<string, number | undefined>)[metricKey], type: 'company' },
+            ...peers.map(p => ({ name: p.name, value: (p as unknown as Record<string, number | undefined>)[metricKey], type: 'peer' })),
+          ].filter(x => x.value != null);
+          const indMed = industryMetrics(metricKey);
+          if (indMed != null) items.push({ name: `${sel.broad_sector} Median`, value: indMed, type: 'industry' });
+          if (lowerBetter) items.sort((a, b) => (a.value ?? 0) - (b.value ?? 0));
+          else items.sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+          if (items.length < 2) return null;
+          return (
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{label}</div>
+              <ResponsiveContainer width="100%" height={Math.max(120, items.length * 28 + 20)}>
+                <BarChart data={items} layout="vertical">
+                  <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false}
+                    tickFormatter={v => suffix === 'M' ? (v >= 1000 ? `${(v/1000).toFixed(0)}B` : `${v.toFixed(0)}M`) : `${v}${suffix}`} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#475569' }} width={140} axisLine={false} tickLine={false}
+                    tickFormatter={(v: string) => v.length > 22 ? v.substring(0, 20) + '…' : v} />
+                  <Tooltip {...TT} formatter={(v) => {
+                    const n = Number(v);
+                    return [suffix === 'M' ? (n >= 1000 ? `${(n/1000).toFixed(1)}B` : `${n.toFixed(0)}M`) : `${n.toFixed(1)}${suffix}`, label];
+                  }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {items.map((d, i) => <Cell key={i}
+                      fill={d.type === 'company' ? '#2563eb' : d.type === 'industry' ? '#f59e0b' : '#e2e8f0'}
+                      stroke={d.type === 'company' ? '#1d4ed8' : d.type === 'industry' ? '#d97706' : '#cbd5e1'}
+                      strokeWidth={1} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        };
+
+        return (
+          <div className="mb-10">
+            <div className="flex items-center gap-4 mb-6">
+              <select value={selectedPeer} onChange={e => setSelectedPeer(e.target.value)}
+                className="bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm w-96 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+                <option value="">Select a company...</option>
+                {peersCompanies.sort((a,b) => a.name.localeCompare(b.name)).map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({REGION_LABELS[c.region]}) — {c.peers?.length} peers</option>
+                ))}
+              </select>
+              {sel && (
+                <div className="flex gap-4 text-xs text-slate-400">
+                  <span><span className="inline-block w-3 h-3 rounded bg-blue-600 mr-1 align-middle" /> Company</span>
+                  <span><span className="inline-block w-3 h-3 rounded bg-slate-200 border border-slate-300 mr-1 align-middle" /> Peers</span>
+                  <span><span className="inline-block w-3 h-3 rounded bg-amber-400 mr-1 align-middle" /> {sel.broad_sector} Median</span>
+                </div>
+              )}
+            </div>
+
+            {!sel ? (
+              <Card className="p-12 text-center text-slate-400">
+                <p className="text-lg mb-2">Select a company to see its peer group analysis</p>
+                <p className="text-sm">25 industrial companies available with full peer benchmarking data</p>
+              </Card>
+            ) : (
+              <>
+                {/* Company header */}
+                <Card className="p-5 mb-6">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-semibold text-slate-900">{c.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{REGION_LABELS[c.region]} | {c.peers?.length} peers</div>
+                      <h2 className="text-xl font-bold text-slate-900">{sel.name}</h2>
+                      <p className="text-sm text-slate-500">{REGION_LABELS[sel.region]} | {sel.broad_sector} | {peers.length} peers | Industry group: {industryCos.length} companies</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: REGION_COLORS[c.region] + '15', color: REGION_COLORS[c.region] }}>
-                      {REGION_LABELS[c.region].substring(0, 2).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    {([['EBIT %', c.ebit_margin, '%'], ['ROE', c.roe, '%'], ['Fwd P/E', c.fwd_pe, 'x']] as [string, number | undefined, string][]).map(([l, v, s]) => (
-                      <div key={l} className="bg-slate-50 rounded-lg py-1.5">
-                        <div className="text-[10px] text-slate-400">{l}</div>
-                        <div className="text-sm font-bold text-slate-800">{v != null ? `${v.toFixed(1)}${s}` : '—'}</div>
-                      </div>
-                    ))}
+                    <div className="flex gap-6">
+                      {([['EBIT %', sel.ebit_margin, '%'], ['ROE', sel.roe, '%'], ['Fwd P/E', sel.fwd_pe, 'x'], ['Growth', sel.fwd_rev_growth, '%']] as [string, number|undefined, string][]).map(([l,v,s]) => (
+                        <div key={l} className="text-right">
+                          <div className="text-[10px] text-slate-400 uppercase font-semibold">{l}</div>
+                          <div className="text-lg font-bold text-slate-900">{v != null ? `${v.toFixed(1)}${s}` : '—'}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </Card>
-              </Link>
-            ))}
+
+                {/* Profitability */}
+                <Card className="p-6 mb-6">
+                  <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Profitability & Scale</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {peerBar('ebitda_margin', 'EBITDA Margin', '%')}
+                    {peerBar('revenue', 'Revenue', 'M')}
+                    {peerBar('net_margin', 'Net Margin', '%')}
+                    {peerBar('roe', 'Return on Equity', '%')}
+                  </div>
+                </Card>
+
+                {/* Valuation */}
+                <Card className="p-6 mb-6">
+                  <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Valuation & Risk</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {peerBar('fwd_pe', 'Forward P/E', 'x', true)}
+                    {peerBar('fwd_ev_ebitda', 'Forward EV/EBITDA', 'x', true)}
+                    {peerBar('debt_equity', 'Debt / Equity', 'x', true)}
+                    {peerBar('net_debt_ebitda', 'Net Debt / EBITDA', 'x', true)}
+                  </div>
+                </Card>
+
+                {/* Comparison table */}
+                <Card className="p-6 mb-6">
+                  <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Full Comparison</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-200">
+                          <th className="px-3 py-2 text-left">Company</th>
+                          <th className="px-3 py-2 text-left">Type</th>
+                          <th className="px-3 py-2 text-right">Revenue</th>
+                          <th className="px-3 py-2 text-right">EBITDA %</th>
+                          <th className="px-3 py-2 text-right">Net %</th>
+                          <th className="px-3 py-2 text-right">ROE</th>
+                          <th className="px-3 py-2 text-right">D/E</th>
+                          <th className="px-3 py-2 text-right">Fwd P/E</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Company row */}
+                        <tr className="bg-blue-50/70 border-b border-slate-200">
+                          <td className="px-3 py-2.5 font-semibold text-blue-700">{sel.name}</td>
+                          <td className="px-3 py-2.5"><span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">COMPANY</span></td>
+                          <td className="px-3 py-2.5 text-right font-mono">{sel.revenue ? Math.round(sel.revenue).toLocaleString() : '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono">{sel.ebitda_margin?.toFixed(1) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono">{sel.net_margin?.toFixed(1) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono">{sel.roe?.toFixed(1) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono">{sel.debt_equity?.toFixed(2) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono">{sel.fwd_pe?.toFixed(1) ?? '—'}</td>
+                        </tr>
+                        {/* Peer rows */}
+                        {peers.map(p => (
+                          <tr key={p.id} className="border-b border-slate-100">
+                            <td className="px-3 py-2 text-slate-700">{p.name}</td>
+                            <td className="px-3 py-2"><span className="text-[10px] text-slate-400">Peer</span></td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{p.revenue ? Math.round(p.revenue).toLocaleString() : '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{p.ebitda_margin?.toFixed(1) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{p.net_margin?.toFixed(1) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{p.roe?.toFixed(1) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{p.debt_equity?.toFixed(2) ?? '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-600">{p.fwd_pe?.toFixed(1) ?? '—'}</td>
+                          </tr>
+                        ))}
+                        {/* Industry median row */}
+                        <tr className="bg-amber-50/50 border-t-2 border-amber-200">
+                          <td className="px-3 py-2.5 font-semibold text-amber-700">{sel.broad_sector} Median</td>
+                          <td className="px-3 py-2.5"><span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded">INDUSTRY</span></td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{(() => { const v = industryMetrics('revenue'); return v ? Math.round(v).toLocaleString() : '—'; })()}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{industryMetrics('ebitda_margin')?.toFixed(1) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{industryMetrics('net_margin')?.toFixed(1) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{industryMetrics('roe')?.toFixed(1) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{industryMetrics('debt_equity')?.toFixed(2) ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{industryMetrics('fwd_pe')?.toFixed(1) ?? '—'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Screening Table */}
       <div className="mb-10">
