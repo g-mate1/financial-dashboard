@@ -32,7 +32,8 @@ function RegionBoxChart({ data, metricKey, label, suffix }: { data: Company[]; m
     return {
       regions: (['vienna', 'germany', 'switzerland'] as const).map(r => {
         const vals = data.filter(c => c.region === r && c[metricKey] != null).map(c => c[metricKey] as number);
-        return { region: REGION_LABELS[r], n: vals.length, q1: q1(vals), median: median(vals), q3: q3(vals), color: REGION_COLORS[r] };
+        const q1v = q1(vals), medv = median(vals), q3v = q3(vals);
+        return { region: REGION_LABELS[r], n: vals.length, q1: q1v, medSpread: medv - q1v, q3Spread: q3v - medv, color: REGION_COLORS[r] };
       }),
       dachMedian,
     };
@@ -46,16 +47,20 @@ function RegionBoxChart({ data, metricKey, label, suffix }: { data: Company[]; m
           <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={v => `${v}${suffix}`} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="region" tick={{ fill: '#475569', fontSize: 11, fontWeight: 500 }} width={85} axisLine={false} tickLine={false} />
           <Tooltip {...TT}
-            formatter={(v, name) => [`${Number(v).toFixed(1)}${suffix}`, name]}
-            labelFormatter={l => { const d = chartData.regions.find(c => c.region === l); return `${l} (n=${d?.n})`; }}
+            formatter={(v, name, props) => {
+              const d = chartData.regions[props?.payload ? chartData.regions.findIndex(r => r.region === props.payload.region) : 0];
+              if (!d) return [`${Number(v).toFixed(1)}${suffix}`, name];
+              return [`Q1: ${d.q1.toFixed(1)} | Med: ${(d.q1 + d.medSpread).toFixed(1)} | Q3: ${(d.q1 + d.medSpread + d.q3Spread).toFixed(1)}`, `${d.region} (n=${d.n})`];
+            }}
+            labelFormatter={() => ''}
           />
           <ReferenceLine x={chartData.dachMedian} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: `DACH ${chartData.dachMedian.toFixed(1)}`, position: 'top', fill: '#94a3b8', fontSize: 9 }} />
           <Bar dataKey="q1" stackId="box" fill="transparent" />
-          <Bar dataKey="median" stackId="box" name="Q1 to Median" radius={[4, 0, 0, 4]}>
-            {chartData.regions.map((d, i) => <Cell key={i} fill={d.color + '44'} />)}
+          <Bar dataKey="medSpread" stackId="box" name="Q1 to Median" radius={[4, 0, 0, 4]}>
+            {chartData.regions.map((d, i) => <Cell key={i} fill={d.color + '55'} />)}
           </Bar>
-          <Bar dataKey="q3" stackId="box" name="Median to Q3" radius={[0, 4, 4, 0]}>
-            {chartData.regions.map((d, i) => <Cell key={i} fill={d.color + '88'} />)}
+          <Bar dataKey="q3Spread" stackId="box" name="Median to Q3" radius={[0, 4, 4, 0]}>
+            {chartData.regions.map((d, i) => <Cell key={i} fill={d.color + '99'} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
