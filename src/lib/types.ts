@@ -45,11 +45,11 @@ export const SECTOR_COLORS: Record<string, string> = {
   'Financials': '#0891b2',
   'Consumer': '#d97706',
   'Healthcare': '#059669',
-  'Materials': '#64748b',
+  'Materials': '#475569',
   'Real Estate': '#be185d',
-  'Energy & Utilities': '#15803d',
-  'Transport': '#9333ea',
-  'Other': '#94a3b8',
+  'Energy & Utilities': '#ea580c',
+  'Transport': '#0369a1',
+  'Other': '#a1a1aa',
 };
 
 export interface Peer {
