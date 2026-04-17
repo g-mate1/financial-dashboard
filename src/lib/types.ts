@@ -21,6 +21,8 @@ export interface Company {
   net_debt_ebitda?: number;
   rev_growth?: number;
   asset_turnover?: number;
+  dso?: number;
+  receivables_turnover?: number;
   pe?: number;
   ev_ebitda?: number;
   pb?: number;
