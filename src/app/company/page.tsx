@@ -211,7 +211,21 @@ function CompanyContent() {
                     <Radar name={company.name} dataKey="company" stroke="#2563eb" fill="#2563eb" fillOpacity={0.15} strokeWidth={2} />
                     <Radar name="Peer Median" dataKey="peers" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.05} strokeDasharray="4 4" />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Tooltip {...TT} />
+                    <Tooltip content={({ payload, label }) => {
+                      if (!payload?.length) return null;
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                          <div className="font-semibold text-slate-700 mb-1">{label}</div>
+                          {payload.map((p, i) => (
+                            <div key={i} className="flex justify-between gap-4">
+                              <span style={{ color: p.color }}>{p.name}</span>
+                              <span className="font-mono">{Number(p.value).toFixed(0)}/100</span>
+                            </div>
+                          ))}
+                          <div className="text-slate-400 mt-1 text-[10px]">Normalized score (higher = better)</div>
+                        </div>
+                      );
+                    }} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
@@ -219,8 +233,8 @@ function CompanyContent() {
                 {peerSummary.map(m => (
                   <div key={m.key} className="bg-slate-50 rounded-lg p-3">
                     <div className="text-[10px] text-slate-400 font-semibold uppercase">{m.label}</div>
-                    <div className="text-lg font-bold text-slate-900">{m.compVal.toFixed(1)}{m.suffix}</div>
-                    <div className="text-xs text-slate-400">Peer med: {m.med.toFixed(1)}{m.suffix}</div>
+                    <div className="text-lg font-bold text-slate-900">{m.suffix === 'x' ? m.compVal.toFixed(2) : m.compVal.toFixed(1)}{m.suffix}</div>
+                    <div className="text-xs text-slate-400">Peer med: {m.suffix === 'x' ? m.med.toFixed(2) : m.med.toFixed(1)}{m.suffix}</div>
                     <div className={`text-xs font-bold ${m.isGood ? 'text-emerald-600' : m.isBad ? 'text-red-600' : 'text-slate-500'}`}>
                       {m.diff > 0 ? '+' : ''}{m.diff.toFixed(0)}%
                     </div>
